@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Огуречные Шокеры</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&family=Rubik:wght@400;600;800&display=swap">
+<style>
+  :root{
+    --brine:#14210f; --brine2:#1f3318; --skin:#6fb33a; --skin-dark:#3f7a1f;
+    --flesh:#eef4c4; --dill:#d4ec6a; --tomato:#ff5236; --glass:rgba(20,33,15,.72);
+  }
+  html,body{height:100%;margin:0;overflow:hidden;background:var(--brine);color:var(--flesh);
+    font-family:"Rubik",system-ui,sans-serif;user-select:none}
+  #game{position:fixed;inset:0}
+  #game canvas{display:block}
+  .display{font-family:"Rubik Mono One","Rubik",system-ui,sans-serif;letter-spacing:.02em}
+
+  /* ---------- menu ---------- */
+  #menu{position:fixed;inset:0;display:grid;place-items:center;padding:16px;z-index:20;
+    background:radial-gradient(ellipse at 50% 30%,rgba(111,179,58,.35),transparent 60%),rgba(12,20,9,.78);
+    overflow:auto}
+  .panel{width:min(560px,100%);display:flex;flex-direction:column;gap:18px;
+    background:var(--brine2);border:3px solid var(--skin-dark);border-radius:22px;padding:26px 24px;
+    box-shadow:0 0 0 6px rgba(111,179,58,.18),0 30px 80px rgba(0,0,0,.5)}
+  .logo{font-size:clamp(26px,6vw,42px);line-height:.95;color:var(--dill);text-wrap:balance;margin:0;
+    text-shadow:0 3px 0 var(--skin-dark),0 6px 0 #0c1508}
+  .logo small{display:block;font-family:"Rubik";font-weight:600;font-size:14px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--skin);text-shadow:none;margin-top:10px}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding:4px;margin:0 -4px;border-radius:14px;background:var(--brine);scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{flex:1 0 auto;font:600 13px "Rubik";padding:9px 12px;border-radius:10px;border:0;cursor:pointer;background:transparent;color:#cfe0b0;white-space:nowrap}
+  .tabs button:hover{color:var(--dill)}
+  .tabs button[aria-selected=true]{background:var(--skin);color:var(--brine)}
+  .tabs button:focus-visible{outline:3px solid var(--dill);outline-offset:1px}
+  .pane{display:flex;flex-direction:column;gap:18px}
+  .srvForm{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .srvForm #srvName{grid-column:1/-1}
+  .srvSel{display:flex;flex-direction:column;gap:4px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#a9c78a}
+  .srvSel select{font:600 14px "Rubik";padding:9px 10px;border-radius:10px;border:2px solid var(--skin-dark);background:var(--brine);color:var(--flesh)}
+  .srvForm .ghost{grid-column:1/-1}
+  .pubRow .own{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--brine);background:#5fd8ff;border-radius:999px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+  @media (max-width:480px){.srvForm{grid-template-columns:1fr}}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  [hidden]{display:none!important}
+  .lbl{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#a9c78a;width:100%}
+  input[type=text]{flex:1;min-width:0;font:600 18px "Rubik";padding:12px 14px;border-radius:12px;
+    border:2px solid var(--skin-dark);background:var(--brine);color:var(--flesh);outline:none}
+  input[type=text]:focus-visible{border-color:var(--dill)}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{font:600 14px "Rubik";padding:9px 14px;border-radius:999px;cursor:pointer;
+    border:2px solid var(--skin-dark);background:transparent;color:var(--flesh)}
+  .seg button[aria-pressed=true]{background:var(--skin);border-color:var(--skin);color:var(--brine)}
+  .seg button:focus-visible,#play:focus-visible{outline:3px solid var(--dill);outline-offset:2px}
+  #play{font:24px "Rubik Mono One","Rubik";padding:16px;border-radius:16px;border:0;cursor:pointer;
+    background:var(--dill);color:var(--brine);box-shadow:0 6px 0 var(--skin-dark);transition:transform .08s}
+  #play:active{transform:translateY(4px);box-shadow:0 2px 0 var(--skin-dark)}
+  .keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;color:#cfe0b0}
+  .keys kbd{font:600 12px "Rubik";background:var(--brine);border:1px solid var(--skin-dark);
+    border-bottom-width:3px;border-radius:6px;padding:2px 7px;color:var(--dill);white-space:nowrap;justify-self:start}
+  .note{font-size:13px;color:#a9c78a;margin:0}
+  #touchNote{color:var(--tomato)}
+  .ghost{font:600 14px "Rubik";padding:10px 16px;border-radius:12px;cursor:pointer;border:2px solid var(--dill);background:transparent;color:var(--dill)}
+  .ghost:hover{background:rgba(212,236,106,.12)}
+  .ghost:focus-visible,#startMatch:focus-visible,.lset select:focus-visible{outline:3px solid var(--dill);outline-offset:2px}
+  .online{display:flex;flex-direction:column;gap:10px;border-top:1px dashed rgba(111,179,58,.45);padding-top:16px}
+  .pubRooms{display:grid;gap:6px;margin-bottom:6px}
+  .pubRow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;background:var(--brine);border-radius:12px;padding:8px 10px}
+  .pubInfo{display:grid;min-width:0}
+  .pubInfo b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pubInfo small{font-size:12px;color:#a9c78a}
+  .pubCnt{font:14px "Rubik Mono One","Rubik";color:var(--dill);font-variant-numeric:tabular-nums}
+  .pubRow .ghost{padding:7px 14px}
+  .onlineRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .onlineRow .or{color:#a9c78a;font-size:13px}
+  #joinCode{flex:0 1 120px;font:18px "Rubik Mono One","Rubik";letter-spacing:.2em;text-transform:uppercase;text-align:center;padding:9px 10px}
+  #netMsg{color:#ffd9a0;min-height:1em}
+  #lobbyPanel ul{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+  #lobbyPanel li{display:flex;align-items:center;gap:8px;background:var(--brine);border-radius:10px;padding:8px 10px;font-weight:600;min-width:0}
+  #lobbyPanel li span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #lobbyPanel li em{font-style:normal;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--brine);background:var(--dill);border-radius:999px;padding:1px 7px}
+  #lobbyPanel li em.you{background:#5fd8ff}
+  #lobbyPanel li small{margin-left:auto;font-weight:800}
+  .pdot{width:10px;height:10px;border-radius:50%;flex:none}
+  .lobbyHead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+  .code{font-size:clamp(30px,8vw,46px);color:var(--dill);letter-spacing:.18em;text-shadow:0 3px 0 var(--skin-dark)}
+  .lset{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .lset label{display:flex;flex-direction:column;gap:4px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#a9c78a}
+  .lset select{font:600 14px "Rubik";padding:9px 10px;border-radius:10px;border:2px solid var(--skin-dark);background:var(--brine);color:var(--flesh)}
+  .lset select:disabled{opacity:.7}
+  #startMatch{font:22px "Rubik Mono One","Rubik";padding:14px;border-radius:16px;border:0;cursor:pointer;background:var(--dill);color:var(--brine);box-shadow:0 6px 0 var(--skin-dark)}
+  .wait{margin:0;text-align:center;color:#cfe0b0;font-weight:600}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+  #cross{position:absolute;left:50%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%)}
+  #cross::before,#cross::after{content:"";position:absolute;background:var(--flesh);box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+  #cross::before{left:10px;top:0;width:2px;height:22px}
+  #cross::after{top:10px;left:0;height:2px;width:22px}
+  #cross.ally::before,#cross.ally::after{background:#5fd8ff}
+  #cross.foe::before,#cross.foe::after{background:#ff5a4a}
+  #hit{position:absolute;left:50%;top:50%;width:34px;height:34px;transform:translate(-50%,-50%) rotate(45deg);opacity:0}
+  #hit::before,#hit::after{content:"";position:absolute;background:#fff}
+  #hit::before{left:16px;top:0;width:2px;height:34px}
+  #hit::after{top:16px;left:0;height:2px;width:34px}
+  #hit.head::before,#hit.head::after{background:var(--tomato)}
+  .box{position:absolute;background:var(--glass);border:2px solid rgba(111,179,58,.45);border-radius:16px;
+    padding:10px 14px;backdrop-filter:blur(4px)}
+  #hpBox{left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:min(300px,45vw)}
+  .hpTop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  #hpNum{font:28px "Rubik Mono One";color:var(--dill);font-variant-numeric:tabular-nums}
+  .tag{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#a9c78a}
+  #hpBar{height:14px;border-radius:999px;background:#0b1307;margin-top:6px;overflow:hidden}
+  #hpFill{height:100%;width:100%;border-radius:999px;background:repeating-linear-gradient(90deg,var(--skin) 0 14px,var(--skin-dark) 14px 16px);transition:width .15s}
+  #ammoBox{right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));text-align:right}
+  #ammo{font:30px "Rubik Mono One";font-variant-numeric:tabular-nums;color:var(--flesh)}
+  #ammo span{font-size:16px;color:#a9c78a}
+  #ammo.empty{color:var(--tomato)}
+  details.skins{border:2px solid var(--skin-dark);border-radius:14px;padding:10px 14px}
+  details.skins summary{cursor:pointer;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#a9c78a;font-weight:600}
+  details.skins[open] summary{margin-bottom:10px}
+  #gunSkinList{display:grid;gap:12px;margin-top:8px}
+  .gsHead{display:flex;justify-content:space-between;gap:10px;font-size:14px;margin-bottom:6px}
+  .gsHead span{color:#a9c78a;font-variant-numeric:tabular-nums}
+  #gunSkinList .seg button{font-size:12px;padding:6px 10px}
+  #loadout{left:50%;bottom:calc(120px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(760px,94vw);pointer-events:auto;display:grid;gap:8px;text-align:center}
+  #loadoutCards{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+  @media (max-width:640px){#loadoutCards{grid-template-columns:repeat(3,1fr)}}
+  .lcard{display:grid;gap:2px;justify-items:center;padding:8px 4px;border-radius:12px;border:2px solid var(--skin-dark);background:var(--brine);color:var(--flesh);cursor:pointer;font:600 13px "Rubik"}
+  .lcard kbd{font:12px "Rubik Mono One";color:var(--dill)}
+  .lcard small{font-size:11px;color:#a9c78a;font-weight:400}
+  #respawnBtn{justify-self:center;min-width:220px;font:20px "Rubik Mono One","Rubik";padding:12px 28px;border-radius:14px;border:0;cursor:pointer;background:var(--dill);color:var(--brine);box-shadow:0 5px 0 var(--skin-dark)}
+  #respawnBtn:disabled{background:#3a4a2a;color:#a9c78a;box-shadow:none;cursor:default}
+  #respawnBtn:focus-visible{outline:3px solid var(--dill);outline-offset:3px}
+  #loadout .pbHint{font-size:12px;color:#a9c78a}
+  .lcard.on{border-color:var(--dill);background:var(--skin-dark);box-shadow:0 0 0 3px rgba(212,236,106,.25)}
+  .vols{display:grid;gap:8px;width:100%}
+  .vol{display:grid;grid-template-columns:80px 1fr 48px;align-items:center;gap:10px;font-size:14px;font-weight:600;color:#cfe0b0}
+  .vol input{width:100%;accent-color:var(--dill);cursor:pointer}
+  .vol input:focus-visible{outline:2px solid var(--dill);outline-offset:3px}
+  .chk{display:flex;align-items:center;gap:8px;font-size:13px;color:#cfe0b0;cursor:pointer}
+  .chk input{accent-color:var(--dill);width:16px;height:16px}
+  .vol output{font-variant-numeric:tabular-nums;text-align:right;color:var(--dill)}
+  #pauseBox{left:50%;top:calc(32% + 70px);transform:translateX(-50%);width:min(380px,90vw);pointer-events:auto;display:grid;gap:10px}
+  #leaveMatch{justify-self:center;font:600 14px "Rubik";padding:8px 18px;border-radius:12px;cursor:pointer;border:2px solid var(--tomato);background:transparent;color:#ffb4a3}
+  #leaveMatch:focus-visible{outline:3px solid var(--dill);outline-offset:2px}
+  #pauseBox .pbHint{font-size:12px;color:#a9c78a;text-align:center}
+  .seg button.locked{opacity:.55;cursor:not-allowed;border-style:dashed}
+  .unlock{position:absolute;left:50%;top:20%;transform:translateX(-50%);text-align:center;padding:16px 26px;border-radius:18px;
+    background:var(--glass);border:3px solid var(--dill);box-shadow:0 0 0 6px rgba(212,236,106,.2),0 20px 60px rgba(0,0,0,.45);min-width:min(360px,86vw)}
+  .unlock .uLbl{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#a9c78a}
+  .unlock .uIcon{font-size:44px;line-height:1.2}
+  .unlock .uName{font-size:clamp(18px,4vw,26px);color:var(--dill);text-shadow:0 2px 0 #0c1508}
+  .unlock .uSub{font-size:13px;font-weight:600;margin-top:6px;color:#eef4c4}
+  .unlock.pop{animation:unlockPop .5s cubic-bezier(.2,1.6,.4,1)}
+  @keyframes unlockPop{from{transform:translateX(-50%) scale(.6);opacity:0}}
+  @media (prefers-reduced-motion:reduce){.unlock.pop{animation:none}}
+  #wname{font-weight:800;color:var(--dill)}
+  #jars{font-size:13px;color:#cfe0b0;margin-top:2px}
+  #score{left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);text-align:center;padding:8px 18px}
+  #score b{font:20px "Rubik Mono One";color:var(--dill);font-variant-numeric:tabular-nums}
+  #score{min-width:min(340px,70vw)}
+  #score .teams{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+  #score .tname{font-weight:800;font-size:14px;letter-spacing:.04em}
+  #score .bars{height:6px;border-radius:999px;background:#0b1307;margin-top:6px;overflow:hidden}
+  #score .bars i{display:block;height:100%;border-radius:999px;transition:width .3s}
+  #score .bars.rev{display:flex;justify-content:flex-end;margin-top:3px}
+  #score .pstat{font-size:13px;font-weight:600;margin-top:6px}
+  #score .onpt{font:600 13px "Rubik";color:var(--dill)}
+  #board tr.teamrow td{font:14px "Rubik Mono One";padding-top:12px;border-top:0}
+  #feed{position:absolute;right:16px;top:calc(16px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:6px;align-items:flex-end;max-width:60vw}
+  #feed div{background:var(--glass);border-radius:10px;padding:5px 10px;font-size:14px;font-weight:600;animation:feedIn .2s}
+  #feed .me{border:2px solid var(--dill)}
+  #feed .k{color:var(--dill)} #feed .v{color:#ffb4a3} #feed .w{color:#a9c78a;font-weight:400;font-size:12px}
+  @keyframes feedIn{from{transform:translateX(20px);opacity:0}}
+  #vign{position:absolute;inset:0;opacity:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(255,60,30,.65));transition:opacity .25s}
+  #scope{position:absolute;inset:0;display:none;background:radial-gradient(circle at center,transparent 0 min(34vh,34vw),#050805 calc(min(34vh,34vw) + 2px))}
+  #scope::before,#scope::after{content:"";position:absolute;background:#050805}
+  #scope::before{left:50%;top:0;bottom:0;width:2px;transform:translateX(-1px)}
+  #scope::after{top:50%;left:0;right:0;height:2px;transform:translateY(-1px)}
+  #center{position:absolute;left:50%;top:32%;transform:translate(-50%,-50%);text-align:center;width:min(92vw,640px)}
+  #bigMsg{font:clamp(22px,5vw,40px) "Rubik Mono One";color:var(--dill);text-shadow:0 3px 0 #0c1508;text-wrap:balance}
+  #subMsg{font-size:17px;font-weight:600;margin-top:8px;text-shadow:0 2px 4px #000}
+  #streak{position:absolute;left:50%;top:62%;transform:translateX(-50%);white-space:nowrap;font:18px "Rubik Mono One";color:var(--tomato);text-shadow:0 2px 0 #000;opacity:0;transition:opacity .3s}
+
+  #board{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,92vw);display:none}
+  #board table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  #board th{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#a9c78a;text-align:right;padding:4px 6px}
+  #board th:first-child,#board td:first-child{text-align:left}
+  #board td{padding:6px;text-align:right;border-top:1px solid rgba(111,179,58,.25);font-weight:600}
+  #board tr.me td{color:var(--dill)}
+  .swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
+
+  #pauseHint{position:absolute;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);font-size:13px;color:#cfe0b0;text-shadow:0 1px 3px #000;white-space:nowrap}
+  @media (max-width:560px){#pauseHint{display:none} #ammo{font-size:22px} #hpNum{font-size:22px}}
+  @media (prefers-reduced-motion:reduce){#feed div{animation:none}}
+</style>
+
+<div id="game"></div>
+
+<div id="hud" hidden>
+  <div id="vign"></div>
+  <div id="scope"></div>
+  <div id="cross"></div>
+  <div id="hit"></div>
+  <div class="box" id="score"></div>
+  <div id="feed"></div>
+  <div id="center"><div id="bigMsg"></div><div id="subMsg"></div></div>
+  <div id="streak"></div>
+  <div id="unlock" class="unlock" hidden role="status"><div class="uLbl">Новый нож открыт!</div><div class="uIcon"></div><div class="uName display"></div><div class="uSub"></div></div>
+  <div class="box" id="hpBox">
+    <div class="hpTop"><span class="tag">свежесть</span><span id="hpNum">100</span></div>
+    <div id="hpBar"><div id="hpFill"></div></div>
+  </div>
+  <div class="box" id="ammoBox">
+    <div id="wname">Рассол-47</div>
+    <div id="ammo">30<span> / ∞</span></div>
+    <div id="jars">Банки: 2 · [G]</div>
+  </div>
+  <div class="box" id="board">
+    <table><thead><tr><th>Огурец</th><th>Нарезал</th><th>Нарезан</th></tr></thead><tbody id="boardBody"></tbody></table>
+  </div>
+  <div class="box" id="pauseBox" hidden>
+    <div class="tag">Громкость</div>
+    <div class="vols">
+        <label class="vol" for="musicVolP"><span>Музыка</span><input type="range" min="0" max="100" step="1" id="musicVolP" class="vol-music"><output></output></label>
+        <label class="vol" for="sfxVolP"><span>Эффекты</span><input type="range" min="0" max="100" step="1" id="sfxVolP" class="vol-sfx"><output></output></label>
+        <label class="chk" for="audioFocusP"><input type="checkbox" class="audio-focus" id="audioFocusP"> Звук только в активном окне</label>
+      </div>
+    <div class="pbHint">Кликни мимо этого окна, чтобы вернуться в бой</div>
+    <button type="button" id="leaveMatch">Выйти в меню</button>
+  </div>
+  <div class="box" id="loadout" hidden>
+    <div class="tag" id="respawnInfo">Выбери оружие на следующую жизнь</div>
+    <div id="loadoutCards"></div>
+    <button type="button" id="respawnBtn" disabled>Играть</button>
+    <div class="pbHint">Enter или пробел — тоже «Играть»</div>
+  </div>
+  <div id="pauseHint">Esc — пауза · Tab — счёт</div>
+</div>
+
+<div id="menu">
+<div class="panel" id="mainPanel">
+    <h1 class="logo display">Огуречные<br>Шокеры<small>Все против всех · грядка №7</small></h1>
+    <div class="row">
+      <label class="lbl" for="nick">Имя огурца</label>
+      <input type="text" id="nick" maxlength="16" value="Огурчик">
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Разделы меню">
+      <button type="button" role="tab" id="tab-play" data-tab="play" aria-selected="true" aria-controls="pane-play">Играть</button>
+      <button type="button" role="tab" id="tab-online" data-tab="online" aria-selected="false" aria-controls="pane-online">Онлайн</button>
+      <button type="button" role="tab" id="tab-guns" data-tab="guns" aria-selected="false" aria-controls="pane-guns">Оружие</button>
+      <button type="button" role="tab" id="tab-knives" data-tab="knives" aria-selected="false" aria-controls="pane-knives">Ножи</button>
+      <button type="button" role="tab" id="tab-settings" data-tab="settings" aria-selected="false" aria-controls="pane-settings">Настройки</button>
+      <button type="button" role="tab" id="tab-controls" data-tab="controls" aria-selected="false" aria-controls="pane-controls">Управление</button>
+    </nav>
+
+    <section class="pane" id="pane-play" role="tabpanel" aria-labelledby="tab-play">
+      <div class="row">
+        <span class="lbl">Режим</span>
+        <div class="seg" id="mode">
+          <button type="button" data-m="ffa" aria-pressed="true">Каждый сам за себя</button>
+          <button type="button" data-m="tdm" aria-pressed="false">Командный бой</button>
+          <button type="button" data-m="koth" aria-pressed="false">Захват точки</button>
+          <button type="button" data-m="gungame" aria-pressed="false">Гонка вооружений</button>
+          <button type="button" data-m="seeds" aria-pressed="false">Сбор семечек</button>
+          <button type="button" data-m="knives" aria-pressed="false">Ножевой бой</button>
+        </div>
+        <p class="note" id="modeHint">Все против всех. Первый, кто нарежет 20 огурцов, забирает грядку.</p>
+      </div>
+      <div class="row">
+        <span class="lbl">Карта</span>
+        <div class="seg" id="map">
+          <button type="button" data-map="garden" aria-pressed="true">Грядка №7</button>
+          <button type="button" data-map="kitchen" aria-pressed="false">Кухня</button>
+          <button type="button" data-map="greenhouse" aria-pressed="false">Теплица</button>
+          <button type="button" data-map="factory" aria-pressed="false">Засолочный цех</button>
+        </div>
+        <p class="note" id="mapHint">Солнечный огород: грядки, ящики с рассолом, тёрки-укрытия и гигантские банки.</p>
+      </div>
+      <div class="row">
+        <span class="lbl">Засольщики-боты</span>
+        <div class="seg" id="diff">
+          <button type="button" data-v="0" aria-pressed="false">Малосольные</button>
+          <button type="button" data-v="1" aria-pressed="true">Хрустящие</button>
+          <button type="button" data-v="2" aria-pressed="false">Маринованные</button>
+        </div>
+      </div>
+      <p class="note" id="touchNote" hidden>Игре нужны клавиатура и мышь — откройте страницу на компьютере.</p>
+      <button id="play" type="button">Играть с ботами</button>
+    </section>
+
+    <section class="pane" id="pane-online" role="tabpanel" aria-labelledby="tab-online" hidden>
+      <div class="online" id="onlineBox">
+        <span class="lbl">Публичные серверы · заходи и играй против всех</span>
+        <div id="pubRooms" class="pubRooms">Загружаем список…</div>
+        <span class="lbl">Создать свой публичный сервер</span>
+        <div class="srvForm">
+          <input type="text" id="srvName" maxlength="24" placeholder="Название сервера" autocomplete="off" aria-label="Название сервера">
+          <label class="srvSel" for="srvMode">Режим<select id="srvMode"><option value="ffa">Каждый сам за себя</option><option value="tdm">Командный бой</option><option value="koth">Захват точки</option><option value="gungame">Гонка вооружений</option><option value="seeds">Сбор семечек</option><option value="knives">Ножевой бой</option></select></label>
+          <label class="srvSel" for="srvMap">Первая карта<select id="srvMap"><option value="garden">Грядка №7</option><option value="kitchen">Кухня</option><option value="greenhouse">Теплица</option><option value="factory">Засолочный цех</option></select></label>
+          <button type="button" class="ghost" id="createServer">Создать сервер</button>
+        </div>
+        <p class="note">Сервер появится в общем списке, зайти сможет любой. Когда все выйдут, он удалится.</p>
+        <span class="lbl">Игра с друзьями по коду · до 10 человек</span>
+        <div class="onlineRow">
+          <button type="button" class="ghost" id="createLobby">Создать лобби</button>
+          <span class="or">или</span>
+          <input type="text" id="joinCode" maxlength="5" placeholder="КОД" autocomplete="off" spellcheck="false" aria-label="Код лобби">
+          <button type="button" class="ghost" id="joinLobby">Войти</button>
+        </div>
+        <p class="note" id="netMsg" role="status"></p>
+      </div>
+    </section>
+
+    <section class="pane" id="pane-guns" role="tabpanel" aria-labelledby="tab-guns" hidden>
+      <div class="row">
+        <span class="lbl">Основное оружие</span>
+        <div class="seg" id="primaryPick">
+          <button type="button" data-g="rifle" aria-pressed="true">Рассол-47</button>
+          <button type="button" data-g="shotgun" aria-pressed="false">Укроп-12</button>
+          <button type="button" data-g="sniper" aria-pressed="false">Кабачок-М</button>
+          <button type="button" data-g="smg" aria-pressed="false">Шинковка-3000</button>
+          <button type="button" data-g="rocket" aria-pressed="false">Огурцомёт</button>
+          <button type="button" data-g="pistol" aria-pressed="false">Корнишон-9</button>
+        </div>
+        <p class="note">В бою с собой только этот ствол и нож. Сменить его можно после смерти, пока ждёшь возрождения.</p>
+      </div>
+      <div class="row">
+        <span class="lbl">Скины оружия</span>
+        <p class="note">Открываются за нарезки из конкретного ствола: 10 — огуречная кожура, 30 — томатный соус, 75 — золотой.</p>
+        <div id="gunSkinList"></div>
+      </div>
+    </section>
+
+    <section class="pane" id="pane-knives" role="tabpanel" aria-labelledby="tab-knives" hidden>
+      <div class="row">
+        <span class="lbl">Нож</span>
+        <div class="seg" id="knifePick">
+          <button type="button" data-k="chef" aria-pressed="true">Шинковщик</button>
+          <button type="button" data-k="karambit" aria-pressed="false">Керамбит «Чили»</button>
+          <button type="button" data-k="butterfly" aria-pressed="false">Бабочка «Горошек»</button>
+          <button type="button" data-k="golden" aria-pressed="false">Золотой нож</button>
+        </div>
+        <p class="note" id="knifeProgress"></p>
+      </div>
+    </section>
+
+    <section class="pane" id="pane-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+      <div class="row">
+        <span class="lbl">Звук</span>
+        <div class="vols">
+          <label class="vol" for="musicVol"><span>Музыка</span><input type="range" min="0" max="100" step="1" id="musicVol" class="vol-music"><output></output></label>
+          <label class="vol" for="sfxVol"><span>Эффекты</span><input type="range" min="0" max="100" step="1" id="sfxVol" class="vol-sfx"><output></output></label>
+          <label class="chk" for="audioFocus"><input type="checkbox" class="audio-focus" id="audioFocus"> Звук только в активном окне</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="pane" id="pane-controls" role="tabpanel" aria-labelledby="tab-controls" hidden>
+      <div class="keys">
+        <kbd>WASD</kbd><span>бегать по грядке</span>
+        <kbd>Мышь</kbd><span>целиться, ЛКМ — стрелять</span>
+        <kbd>ПКМ</kbd><span>прицел у снайперки Кабачок-М</span>
+        <kbd>Пробел</kbd><span>прыжок (на ящики тоже)</span>
+        <kbd>1 · 2</kbd><span>основное оружие · нож (колесо мыши — переключить)</span>
+        <kbd>1–6</kbd><span>после смерти: выбрать ствол на следующую жизнь</span>
+        <kbd>ПКМ</kbd><span>ножом — сильный удар, в спину — сразу нарезка</span>
+        <kbd>F</kbd><span>осмотреть оружие</span>
+        <kbd>R</kbd><span>перезарядка</span>
+        <kbd>G</kbd><span>кинуть банку с рассолом</span>
+        <kbd>Подбор</kbd><span>патроны и банки кончаются — подбирай ящики и рюкзачки с нарезанных огурцов</span>
+        <kbd>Shift</kbd><span>идти медленно и точнее</span>
+        <kbd>Esc</kbd><span>пауза, громкость и выход в меню</span>
+      </div>
+      <p class="note">Выстрел в голову — двойной урон. В командных режимах свои подсвечены голубым и видны сквозь стены, враги обведены красным, а прицел меняет цвет, когда наведён на огурца.</p>
+    </section>
+  </div>
+
+  <div class="panel" id="lobbyPanel" hidden>
+    <div class="lobbyHead">
+      <div>
+        <span class="lbl">Код лобби — отправь друзьям</span>
+        <div class="code display" id="lobbyCode">-----</div>
+      </div>
+      <button type="button" class="ghost" id="copyCode">Скопировать</button>
+    </div>
+    <div>
+      <span class="lbl">Игроки <span id="pcount">1 / 10</span></span>
+      <ul id="plist"></ul>
+    </div>
+    <div class="seg" id="teamPick" hidden>
+      <button type="button" data-team="0" aria-pressed="false">За Укроп</button>
+      <button type="button" data-team="1" aria-pressed="false">За Чеснок</button>
+    </div>
+    <div class="lset">
+      <label for="lMap">Карта<select id="lMap"><option value="garden">Грядка №7</option><option value="kitchen">Кухня</option><option value="greenhouse">Теплица</option><option value="factory">Засолочный цех</option></select></label>
+      <label for="lMode">Режим<select id="lMode"><option value="ffa">Каждый сам за себя</option><option value="tdm">Командный бой</option><option value="koth">Захват точки</option><option value="gungame">Гонка вооружений</option><option value="seeds">Сбор семечек</option><option value="knives">Ножевой бой</option></select></label>
+      <label for="lDiff">Боты<select id="lDiff"><option value="0">Малосольные</option><option value="1">Хрустящие</option><option value="2">Маринованные</option></select></label>
+      <label for="lBots">Число ботов<select id="lBots"><option value="0">Без ботов</option><option value="2">2</option><option value="4">4</option><option value="6">6</option><option value="8">8</option></select></label>
+    </div>
+    <p class="note">Настройки меняет хост. В матч можно зайти и когда он уже идёт.</p>
+    <button id="startMatch" type="button">Начать матч</button>
+    <p class="wait" id="waitHost">Ждём, пока хост начнёт матч…</p>
+    <button type="button" class="ghost" id="leaveLobby">Выйти из лобби</button>
+  </div>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="world.js"></script>
+<script src="weapons.js"></script>
+<script src="maps.js"></script>
+<script src="mapextras.js"></script>
+<script src="mapfx.js"></script>
+<script src="modes.js"></script>
+<script src="pickups.js"></script>
+<script src="knife.js"></script>
+<script src="skins.js"></script>
+<script src="music.js"></script>
+<script src="game.js"></script>
+<script src="net.js"></script>

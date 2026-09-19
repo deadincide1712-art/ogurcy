@@ -1,0 +1,15 @@
+{
+  "name": "ogurcy-online",
+  "version": "1.0.0",
+  "description": "Огуречные Шокеры — мультиплеерный шутер про огурцов с лобби по коду",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
