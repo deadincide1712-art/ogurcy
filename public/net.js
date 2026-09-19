@@ -437,7 +437,7 @@ async function joinPublic(code) {
 function requestRooms() {
   if (NET.lobby || $('menu').hidden) return;
   if (NET.ws && NET.ws.readyState === 1) netSend({ t: 'list' });
-  else netConnect().then(() => netSend({ t: 'list' })).catch(() => { $('pubRooms').textContent = REGIONS.length > 1 ? 'Этот сервер сейчас недоступен — выбери другой.' : 'Список серверов недоступен — игра открыта без сервера.'; });
+  else netConnect().then(() => netSend({ t: 'list' })).catch(() => { if (NET.ws && NET.ws.readyState < 2) return; $('pubRooms').textContent = REGIONS.length > 1 ? 'Этот сервер сейчас недоступен — выбери другой.' : 'Список серверов недоступен — игра открыта без сервера.'; });
 }
 if (/^https?:$/.test(location.protocol)) {
   renderRegions(); requestRooms(); setInterval(requestRooms, 4000);
