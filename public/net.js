@@ -9,18 +9,97 @@ const entById = id => ents.find(e => e.id === id);
 function netSend(o) { if (NET.ws && NET.ws.readyState === 1) NET.ws.send(JSON.stringify(o)); }
 function relay(d, to) { if (NET.inGame) netSend({ t: 'relay', to, d }); }
 
+// ---------- серверы по регионам ----------
+// на сайте — три сервера в разных частях света; при запуске через npm start — только этот компьютер
+const ON_RENDER = /\.onrender\.com$/.test(location.hostname);
+const REGIONS = ON_RENDER ? [
+  { id: 'eu', name: 'Европа', city: 'Франкфурт', host: 'ogurcy.onrender.com' },
+  { id: 'us', name: 'США', city: 'Вирджиния', host: 'ogurcy-us.onrender.com' },
+  { id: 'asia', name: 'Азия', city: 'Сингапур', host: 'ogurcy-asia.onrender.com' },
+] : [{ id: 'here', name: 'Этот сервер', city: location.host, host: location.host }];
+const REG = { id: null, auto: true, ping: {}, busy: {} };
+try { const r = localStorage.getItem('ogurcy-region'); if (REGIONS.some(x => x.id === r)) { REG.id = r; REG.auto = false; } } catch (e) {}
+const wsUrl = host => (location.protocol === 'https:' ? 'wss://' : 'ws://') + host + '/ws';
+const curRegion = () => REGIONS.find(r => r.id === REG.id) || REGIONS[0];
+
+// пинг: отдельное соединение, три замера, берём лучший. Спящий бесплатный сервер просыпается до минуты
+function measurePing(r) {
+  return new Promise(res => {
+    let ws, done = false, t0 = 0, n = 0, best = Infinity;
+    const fin = v => { if (done) return; done = true; clearTimeout(to); clearTimeout(slow); try { ws.close(); } catch (e) {} res(v); };
+    const to = setTimeout(() => fin(best < Infinity ? Math.round(best) : null), 75000);
+    const slow = setTimeout(() => { if (!n) { REG.busy[r.id] = 'wake'; renderRegions(); } }, 2500);
+    const ping = () => { t0 = performance.now(); ws.send('{"t":"ping"}'); };
+    try { ws = new WebSocket(wsUrl(r.host)); } catch (e) { return fin(null); }
+    ws.onopen = ping;
+    ws.onmessage = ev => {
+      if (!/"pong"/.test(ev.data)) return;
+      best = Math.min(best, performance.now() - t0);
+      if (++n >= 3) fin(Math.round(best)); else ping();
+    };
+    ws.onerror = () => fin(null);
+  });
+}
+async function pingRegions() {
+  await Promise.all(REGIONS.map(async r => {
+    if (REG.busy[r.id]) return;
+    REG.busy[r.id] = 'ping'; renderRegions();
+    REG.ping[r.id] = await measurePing(r);
+    REG.busy[r.id] = null; renderRegions();
+  }));
+  if (REG.auto) {                                  // сами не выбирали — берём самый быстрый
+    const ok = REGIONS.filter(r => REG.ping[r.id] != null).sort((a, b) => REG.ping[a.id] - REG.ping[b.id]);
+    if (ok.length && ok[0].id !== curRegion().id && !NET.lobby) switchRegion(ok[0].id, true);
+  }
+}
+function renderRegions() {
+  const box = $('regionPick'); if (!box) return;
+  $('regionBox').hidden = REGIONS.length < 2;
+  box.textContent = '';
+  const cur = curRegion();
+  for (const r of REGIONS) {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'radio');
+    b.setAttribute('aria-checked', String(r.id === cur.id));
+    b.disabled = !!NET.lobby;
+    const nm = document.createElement('span'); nm.textContent = r.name;
+    const city = document.createElement('small'); city.textContent = r.city;
+    const pg = document.createElement('span'); pg.className = 'ping';
+    const ms = REG.ping[r.id], busy = REG.busy[r.id];
+    if (busy === 'wake') pg.textContent = 'просыпается…';
+    else if (busy) pg.textContent = 'меряем пинг…';
+    else if (ms == null) pg.textContent = r.id in REG.ping ? 'нет связи' : '—';
+    else { pg.textContent = ms + ' мс'; pg.classList.add(ms < 80 ? 'good' : ms < 160 ? 'ok' : 'bad'); }
+    b.append(nm, city, pg);
+    b.addEventListener('click', () => { REG.auto = false; try { localStorage.setItem('ogurcy-region', r.id); } catch (e) {} switchRegion(r.id); });
+    box.append(b);
+  }
+  $('regionNote').textContent = NET.lobby ? 'Сервер можно сменить, когда выйдешь из матча.'
+    : (REG.auto ? 'Выбран автоматически — самый быстрый. ' : '') + 'Друзья должны выбрать тот же сервер, иначе не увидят твоё лобби.';
+}
+function switchRegion(id, auto) {
+  if (NET.lobby) return;
+  if (!auto) REG.auto = false;
+  const was = curRegion().id; REG.id = id;
+  if (curRegion().id !== was && NET.ws) { const old = NET.ws; NET.ws = null; NET.connecting = null; try { old.close(); } catch (e) {} }
+  $('pubRooms').textContent = 'Загружаем список…';
+  renderRegions(); requestRooms();
+}
+
 // ---------- подключение ----------
 function netConnect() {
   if (NET.ws && NET.ws.readyState === 1) return Promise.resolve();
+  if (NET.connecting) return NET.connecting;         // спящий сервер отвечает долго — не плодим соединения
   if (!/^https?:$/.test(location.protocol)) return Promise.reject(new Error('Открой игру через сервер (npm start), а не как файл'));
-  return new Promise((res, rej) => {
-    const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+  const p = new Promise((res, rej) => {
+    const ws = new WebSocket(wsUrl(curRegion().host));
     NET.ws = ws;
-    ws.onopen = () => res();
-    ws.onerror = () => rej(new Error('Не удалось подключиться к серверу'));
-    ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; } onServer(m); };
-    ws.onclose = () => { if (NET.lobby) leaveOnline('Соединение с сервером потеряно'); NET.ws = null; };
+    ws.onopen = () => { if (NET.connecting === p) NET.connecting = null; res(); };
+    ws.onerror = () => { if (NET.connecting === p) NET.connecting = null; rej(new Error('Не удалось подключиться к серверу')); };
+    ws.onmessage = ev => { if (NET.ws !== ws) return; let m; try { m = JSON.parse(ev.data); } catch (e) { return; } onServer(m); };
+    ws.onclose = () => { if (NET.ws !== ws) return; if (NET.lobby) leaveOnline('Соединение с сервером потеряно'); NET.ws = null; NET.connecting = null; };
   });
+  NET.connecting = p;
+  return p;
 }
 function netMsg(text) { $('netMsg').textContent = text; }
 
@@ -358,8 +437,12 @@ async function joinPublic(code) {
 function requestRooms() {
   if (NET.lobby || $('menu').hidden) return;
   if (NET.ws && NET.ws.readyState === 1) netSend({ t: 'list' });
-  else netConnect().then(() => netSend({ t: 'list' })).catch(() => { $('pubRooms').textContent = 'Список серверов недоступен — игра открыта без сервера.'; });
+  else netConnect().then(() => netSend({ t: 'list' })).catch(() => { $('pubRooms').textContent = REGIONS.length > 1 ? 'Этот сервер сейчас недоступен — выбери другой.' : 'Список серверов недоступен — игра открыта без сервера.'; });
 }
-if (/^https?:$/.test(location.protocol)) { requestRooms(); setInterval(requestRooms, 4000); }
+if (/^https?:$/.test(location.protocol)) {
+  renderRegions(); requestRooms(); setInterval(requestRooms, 4000);
+  if (REGIONS.length > 1) { pingRegions(); setInterval(() => { if (!NET.lobby && !$('menu').hidden && !$('pane-online').hidden) pingRegions(); }, 30000); }
+  setInterval(() => { const box = $('regionPick'); if (box && [...box.children].some(b => b.disabled !== !!NET.lobby)) renderRegions(); }, 1000);
+}
 
 bootGame();

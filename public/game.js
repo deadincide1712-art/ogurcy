@@ -388,6 +388,7 @@ addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('wheel', e => { if (!paused && running && player.alive) switchWeapon(player.weapon === 'knife' ? (player.primary || 'rifle') : 'knife'); });
 addEventListener('mousemove', e => {
   if (paused || !running || !player.alive) return;
+  if (Math.abs(e.movementX) > 350 || Math.abs(e.movementY) > 350) return;
   const sens = .0023 * (scoped ? .35 : 1);
   player.yaw -= e.movementX * sens;
   player.pitch = THREE.MathUtils.clamp(player.pitch - e.movementY * sens, -1.5, 1.5);
@@ -561,6 +562,7 @@ function frame(t) {
   requestAnimationFrame(frame);
   const dt = Math.min(.05, (t - last) / 1000); last = t;
   updateMapAnims(dt);
+  gfxTick(dt, running && !gameOver && !paused);
   if (running && !gameOver) {
     const sim = paused && !NET.inGame ? 0 : dt; // в сетевой игре мир не замирает на паузе
     now += sim;

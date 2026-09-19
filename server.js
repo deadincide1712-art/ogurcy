@@ -144,6 +144,7 @@ wss.on('connection', ws => {
         break;
       }
       case 'list': send(ws, { t: 'list', rooms: roomList() }); break;
+      case 'ping': send(ws, { t: 'pong' }); break;
       case 'settings': if (l && ws.pid === l.host && !l.public) { l.settings = m.settings || {}; broadcastLobby(l); } break;
       case 'state': if (l && ws.pid === l.host) { l.inGame = !!m.inGame; if (m.map) l.curMap = m.map; broadcastLobby(l); } break;
       case 'relay': {

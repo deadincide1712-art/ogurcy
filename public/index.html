@@ -65,6 +65,14 @@
   .ghost:focus-visible,#startMatch:focus-visible,.lset select:focus-visible{outline:3px solid var(--dill);outline-offset:2px}
   .online{display:flex;flex-direction:column;gap:10px;border-top:1px dashed rgba(111,179,58,.45);padding-top:16px}
   .pubRooms{display:grid;gap:6px;margin-bottom:6px}
+  .regions{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin-bottom:6px}
+  .regions button{display:grid;gap:2px;text-align:left;font:600 14px "Rubik";color:#eef4c4;background:var(--brine);border:2px solid transparent;border-radius:12px;padding:8px 12px;cursor:pointer}
+  .regions button small{font:500 12px "Rubik";color:#cfe0b0}
+  .regions button .ping{font:700 13px "Rubik";font-variant-numeric:tabular-nums}
+  .regions button .ping.good{color:#9be15d}.regions button .ping.ok{color:#ffd24a}.regions button .ping.bad{color:#ff8a6a}
+  .regions button[aria-checked=true]{border-color:var(--skin)}
+  .regions button:disabled{opacity:.6;cursor:not-allowed}
+  .regions button:focus-visible{outline:3px solid var(--dill);outline-offset:2px}
   .pubRow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;background:var(--brine);border-radius:12px;padding:8px 10px}
   .pubInfo{display:grid;min-width:0}
   .pubInfo b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -292,6 +300,11 @@
 
     <section class="pane" id="pane-online" role="tabpanel" aria-labelledby="tab-online" hidden>
       <div class="online" id="onlineBox">
+        <div id="regionBox">
+          <span class="lbl">Сервер · выбери с самым маленьким пингом</span>
+          <div class="regions" id="regionPick" role="radiogroup" aria-label="Сервер"></div>
+          <p class="note" id="regionNote"></p>
+        </div>
         <span class="lbl">Публичные серверы · заходи и играй против всех</span>
         <div id="pubRooms" class="pubRooms">Загружаем список…</div>
         <span class="lbl">Создать свой публичный сервер</span>
@@ -354,6 +367,17 @@
           <label class="vol" for="sfxVol"><span>Эффекты</span><input type="range" min="0" max="100" step="1" id="sfxVol" class="vol-sfx"><output></output></label>
           <label class="chk" for="audioFocus"><input type="checkbox" class="audio-focus" id="audioFocus"> Звук только в активном окне</label>
         </div>
+      </div>
+      <div class="row">
+        <span class="lbl">Графика</span>
+        <div class="seg" id="gfxPick">
+          <button type="button" data-gfx="auto" aria-pressed="true">Авто</button>
+          <button type="button" data-gfx="high" aria-pressed="false">Высокая</button>
+          <button type="button" data-gfx="mid" aria-pressed="false">Средняя</button>
+          <button type="button" data-gfx="low" aria-pressed="false">Низкая</button>
+        </div>
+        <p class="note" id="gfxNote"></p>
+        <p class="note">Если экран дёргается или кадров мало — поставь «Низкая»: без теней и в меньшем разрешении игра идёт намного плавнее.</p>
       </div>
     </section>
 

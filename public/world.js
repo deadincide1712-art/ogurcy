@@ -32,6 +32,50 @@ Object.assign(sun.shadow.camera, { left: -55, right: 55, top: 55, bottom: -55, n
 sun.shadow.bias = -0.0006;
 scene.add(sun);
 
+// ---------- качество графики: авто снижает его, если кадров мало ----------
+const GFX_LEVELS = {
+  high: { name: 'Высокая', pr: 2, shadows: true, map: 2048 },
+  mid:  { name: 'Средняя', pr: 1, shadows: true, map: 1024 },
+  low:  { name: 'Низкая',  pr: .7, shadows: false, map: 512 },
+};
+const GFX = { mode: 'auto', level: null, acc: 0, n: 0, slow: 0 };
+try { const g = localStorage.getItem('ogurcy-gfx'); if (g === 'auto' || GFX_LEVELS[g]) GFX.mode = g; } catch (e) {}
+function applyGfx(level) {
+  if (GFX.level === level) return;
+  const L = GFX_LEVELS[level], hadShadows = GFX.level ? GFX_LEVELS[GFX.level].shadows : true;
+  GFX.level = level;
+  renderer.setPixelRatio(level === 'low' ? L.pr : Math.min(devicePixelRatio, L.pr));
+  renderer.shadowMap.enabled = L.shadows; sun.castShadow = L.shadows;
+  if (sun.shadow.mapSize.x !== L.map) { sun.shadow.mapSize.set(L.map, L.map); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+  if (hadShadows !== L.shadows) scene.traverse(o => { if (o.material) [].concat(o.material).forEach(m => m.needsUpdate = true); });
+  resize();
+  const note = document.getElementById('gfxNote');
+  if (note) note.textContent = GFX.mode === 'auto' ? `Сейчас: ${L.name.toLowerCase()}. Если игра начнёт тормозить, качество понизится само.` : '';
+}
+function setGfxMode(mode) {
+  GFX.mode = mode; GFX.acc = GFX.n = GFX.slow = 0;
+  try { localStorage.setItem('ogurcy-gfx', mode); } catch (e) {}
+  GFX.level = null; applyGfx(mode === 'auto' ? 'high' : mode);
+  document.querySelectorAll('#gfxPick button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gfx === mode)));
+}
+// считаем среднее время кадра за 2 секунды игры; дважды подряд медленно — ступенька вниз
+function gfxTick(dt, active) {
+  if (GFX.mode !== 'auto' || !active || document.hidden || GFX.level === 'low') return;
+  GFX.acc += dt; GFX.n++;
+  if (GFX.acc < 2) return;
+  const avg = GFX.acc / GFX.n; GFX.acc = GFX.n = 0;
+  GFX.slow = avg > 1 / 45 ? GFX.slow + 1 : 0;
+  if (GFX.slow >= 2) { GFX.slow = 0; applyGfx(GFX.level === 'high' ? 'mid' : 'low'); }
+}
+applyGfx(GFX.mode === 'auto' ? 'high' : GFX.mode);
+addEventListener('DOMContentLoaded', () => {
+  const box = document.getElementById('gfxPick'); if (!box) return;
+  box.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setGfxMode(b.dataset.gfx); });
+  box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gfx === GFX.mode)));
+  GFX.level && applyGfx(GFX.level);
+  const note = document.getElementById('gfxNote'); if (note && GFX.mode === 'auto') note.textContent = `Сейчас: ${GFX_LEVELS[GFX.level].name.toLowerCase()}. Если игра начнёт тормозить, качество понизится само.`;
+});
+
 // ---------- детерминированный рандом для раскладки ----------
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const rng = mulberry32(7);
