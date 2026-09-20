@@ -8,7 +8,7 @@ const os = require('os');
 const { WebSocketServer } = require('ws');
 
 const PORT = +process.env.PORT || 3000;
-const ADMIN_PASS = process.env.ADMIN_PASS || 'rassol-admin';   // на Render задаётся в Environment
+const ADMIN_PASS = process.env.ADMIN_PASS || 'imgay';   // на Render задаётся в Environment
 const MAX_PLAYERS = 10;
 const PUBLIC = path.join(__dirname, 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.ico': 'image/x-icon' };
