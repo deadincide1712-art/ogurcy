@@ -172,6 +172,7 @@ function startReload(e) {
 
 function damage(v, dmg, by, head, dir) {
   if (!v.alive) return;
+  if (v.isPlayer && typeof ADMIN === 'object' && ADMIN.on && ADMIN.god) return;   // админская неуязвимость
   v.hp -= dmg; v.lastHurt = now;
   if (NET.inGame && v.kind === 'remote') relay({ k: 'hp', hp: Math.max(0, Math.round(v.hp)) }, v.id);
   if (v.isPlayer) { hurtFlash = Math.min(1, hurtFlash + dmg / 45); }
@@ -522,7 +523,7 @@ function updateHUD(dt) {
   if (showLoad) updateRespawnUI();
   if (hudT > 0) return; hudT = .08;
   const hp = Math.max(0, Math.ceil(player.hp));
-  $('hpNum').textContent = hp; $('hpFill').style.width = hp + '%';
+  $('hpNum').textContent = hp; $('hpFill').style.width = Math.min(100, hp) + '%';
   const w = WEAPONS[player.weapon];
   $('wname').textContent = w.melee ? KNIFE_SKINS[knifeSkin].name : w.name;
   const res = player.reserve[player.weapon];
@@ -568,6 +569,8 @@ function frame(t) {
   const dt = Math.min(.05, (t - last) / 1000); last = t;
   updateMapAnims(dt);
   gfxTick(dt, running && !gameOver && !paused);
+  if (!$('menu').hidden && typeof charViewFrame === 'function') charViewFrame(dt);
+  if (typeof adminTick === 'function' && running) adminTick(dt);
   if (running && !gameOver) {
     const sim = paused && !NET.inGame ? 0 : dt; // в сетевой игре мир не замирает на паузе
     now += sim;
@@ -694,6 +697,9 @@ $('diff').addEventListener('click', e => {
   $('diff').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
 });
 try { const n = localStorage.getItem('ogurcy-nick'); if (n) $('nick').value = n; } catch (e) {}
+const charNameEl = $('charName');
+const syncCharName = () => { if (charNameEl) charNameEl.textContent = ($('nick').value.trim() || 'Огурчик').slice(0, 16); };
+$('nick').addEventListener('input', syncCharName); syncCharName();
 if (matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches) $('touchNote').hidden = false;
 $('play').addEventListener('click', () => {
   if (NET.lobby) return;

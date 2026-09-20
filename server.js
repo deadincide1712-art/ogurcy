@@ -8,6 +8,7 @@ const os = require('os');
 const { WebSocketServer } = require('ws');
 
 const PORT = +process.env.PORT || 3000;
+const ADMIN_PASS = process.env.ADMIN_PASS || 'rassol-admin';   // на Render задаётся в Environment
 const MAX_PLAYERS = 10;
 const PUBLIC = path.join(__dirname, 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.ico': 'image/x-icon' };
@@ -144,12 +145,18 @@ wss.on('connection', ws => {
         break;
       }
       case 'list': send(ws, { t: 'list', rooms: roomList() }); break;
+      case 'admin': {                                   // права админа: только по паролю сервера
+        if (String(m.pass || '') !== ADMIN_PASS) return send(ws, { t: 'error', msg: 'Пароль админа не подошёл' });
+        ws.admin = true; send(ws, { t: 'adminok' });
+        console.log(`Игрок ${ws.pid} получил права админа`);
+        break;
+      }
       case 'ping': send(ws, { t: 'pong' }); break;
       case 'settings': if (l && ws.pid === l.host && !l.public) { l.settings = m.settings || {}; broadcastLobby(l); } break;
       case 'state': if (l && ws.pid === l.host) { l.inGame = !!m.inGame; if (m.map) l.curMap = m.map; broadcastLobby(l); } break;
       case 'relay': {
         if (!l) return;
-        const out = JSON.stringify({ t: 'msg', from: ws.pid, d: m.d });
+        const out = JSON.stringify({ t: 'msg', from: ws.pid, adm: ws.admin || undefined, d: m.d });
         const to = m.to === 'host' ? l.host : m.to;
         if (to) { const p = l.players.get(to); if (p && p.ws.readyState === 1) p.ws.send(out); }
         else for (const p of l.players.values()) if (p.id !== ws.pid && p.ws.readyState === 1) p.ws.send(out);

@@ -103,6 +103,7 @@ function setCharSkin(id) {
   charSkin = id;
   try { localStorage.setItem('ogurcy-char', id); } catch (e) {}
   renderCharPick();
+  if (typeof charViewRefresh === 'function') charViewRefresh();
 }
 // у ботов скины чередуются — на карте сразу видно всех огурцов
 const BOT_CHARS = ['classic', 'marin', 'classic', 'jar', 'marin', 'sci', 'classic', 'gold'];

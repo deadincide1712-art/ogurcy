@@ -117,6 +117,7 @@ function setNextPrimary(k) {
   nextPrimary = k;
   try { localStorage.setItem('ogurcy-primary', k); } catch (e) {}
   renderPrimaryPick(); renderLoadout();
+  if (typeof charViewRefresh === 'function') charViewRefresh();
 }
 function renderPrimaryPick() {
   const box = document.getElementById('primaryPick'); if (!box) return;

@@ -99,6 +99,26 @@
   #startMatch{font:22px "Rubik Mono One","Rubik";padding:14px;border-radius:16px;border:0;cursor:pointer;background:var(--dill);color:var(--brine);box-shadow:0 6px 0 var(--skin-dark)}
   .wait{margin:0;text-align:center;color:#cfe0b0;font-weight:600}
 
+
+  /* ---------- стартовый экран: огурец слева, кнопки справа ---------- */
+  .home{display:grid;grid-template-columns:minmax(150px,210px) 1fr;gap:16px;align-items:stretch}
+  @media (max-width:520px){.home{grid-template-columns:1fr}}
+  .charBox{background:radial-gradient(ellipse at 50% 20%,rgba(111,179,58,.35),rgba(10,18,8,.6));border:2px solid var(--skin-dark);border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;min-height:230px}
+  .charBox canvas{width:100%;flex:1;min-height:170px;display:block}
+  .charBox .cname{font:700 14px "Rubik";color:var(--dill);text-align:center}
+  .charBox .csub{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#a9c78a;text-align:center}
+  .homeCol{display:flex;flex-direction:column;gap:10px;min-width:0}
+  .homeCol .quick{display:grid;gap:6px}
+  .friends{background:var(--brine);border-radius:14px;padding:10px 12px;display:grid;gap:8px}
+  .friends .onlineRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .friends input{flex:1;min-width:90px;font:700 16px "Rubik";letter-spacing:.14em;text-transform:uppercase;text-align:center}
+  /* ---------- служебная панель ---------- */
+  .admRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .admRow input[type=password],.admRow input[type=number]{font:600 15px "Rubik";padding:9px 12px;border-radius:10px;border:2px solid var(--skin-dark);background:var(--brine);color:var(--flesh);max-width:170px}
+  #admBox{display:grid;gap:8px;border:2px dashed var(--tomato);border-radius:14px;padding:10px 12px}
+  #admHud{position:absolute;left:50%;top:calc(52px + env(safe-area-inset-top,0px));transform:translateX(-50%);font:700 12px "Rubik";letter-spacing:.06em;color:#ffb4a3;background:rgba(40,10,6,.72);border:1px solid #ff5236;border-radius:999px;padding:4px 14px;white-space:nowrap}
+  #admFlash{position:absolute;left:50%;top:calc(82px + env(safe-area-inset-top,0px));transform:translateX(-50%);font:700 15px "Rubik";color:#ffd24a;text-shadow:0 2px 4px #000}
+
   /* ---------- HUD ---------- */
   #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
   #cross{position:absolute;left:50%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%)}
@@ -244,6 +264,8 @@
     <button type="button" id="respawnBtn" disabled>Играть</button>
     <div class="pbHint">Enter или пробел — тоже «Играть»</div>
   </div>
+  <div id="admHud" hidden></div>
+  <div id="admFlash" hidden></div>
   <div id="pauseHint">Esc — пауза · Tab — счёт</div>
 </div>
 
@@ -265,6 +287,29 @@
     </nav>
 
     <section class="pane" id="pane-play" role="tabpanel" aria-labelledby="tab-play">
+      <div class="home">
+        <div class="charBox" id="charHost">
+          <canvas id="charCanvas"></canvas>
+          <span class="cname" id="charName">Огурчик</span>
+          <span class="csub">твой огурец</span>
+        </div>
+        <div class="homeCol">
+          <div class="quick">
+            <button id="play" type="button">Играть с ботами</button>
+          </div>
+          <div class="friends">
+            <span class="lbl">Играть с друзьями по коду</span>
+            <div class="onlineRow">
+              <button type="button" class="ghost" id="createLobby">Создать лобби</button>
+              <span class="or">или</span>
+              <input type="text" id="joinCode" maxlength="5" placeholder="КОД" autocomplete="off" spellcheck="false" aria-label="Код лобби">
+              <button type="button" class="ghost" id="joinLobby">Войти</button>
+            </div>
+            <p class="note" id="netMsg" role="status"></p>
+            <p class="note">Создай лобби, отправь другу код — и он зайдёт к тебе. Публичные серверы и свой сервер — во вкладке «Онлайн».</p>
+          </div>
+        </div>
+      </div>
       <div class="row">
         <span class="lbl">Режим</span>
         <div class="seg" id="mode">
@@ -296,7 +341,6 @@
         </div>
       </div>
       <p class="note" id="touchNote" hidden>Игре нужны клавиатура и мышь — откройте страницу на компьютере.</p>
-      <button id="play" type="button">Играть с ботами</button>
     </section>
 
     <section class="pane" id="pane-online" role="tabpanel" aria-labelledby="tab-online" hidden>
@@ -316,14 +360,7 @@
           <button type="button" class="ghost" id="createServer">Создать сервер</button>
         </div>
         <p class="note">Сервер появится в общем списке, зайти сможет любой. Когда все выйдут, он удалится.</p>
-        <span class="lbl">Игра с друзьями по коду · до 10 человек</span>
-        <div class="onlineRow">
-          <button type="button" class="ghost" id="createLobby">Создать лобби</button>
-          <span class="or">или</span>
-          <input type="text" id="joinCode" maxlength="5" placeholder="КОД" autocomplete="off" spellcheck="false" aria-label="Код лобби">
-          <button type="button" class="ghost" id="joinLobby">Войти</button>
-        </div>
-        <p class="note" id="netMsg" role="status"></p>
+        <p class="note">Игра с друзьями по коду — на вкладке «Играть».</p>
       </div>
     </section>
 
@@ -394,6 +431,25 @@
         <p class="note" id="gfxNote"></p>
         <p class="note">Если экран дёргается или кадров мало — поставь «Низкая»: без теней и в меньшем разрешении игра идёт намного плавнее.</p>
       </div>
+      <div class="row">
+        <span class="lbl">Служебная панель</span>
+        <div class="admRow" id="admLogin">
+          <input type="password" id="admPass" placeholder="Пароль" autocomplete="off">
+          <button type="button" class="ghost" id="admGo">Войти</button>
+        </div>
+        <p class="note" id="admMsg" role="status"></p>
+        <div id="admBox" hidden>
+          <label class="chk" for="admWall"><input type="checkbox" id="admWall"> Видеть сквозь стены <kbd>V</kbd></label>
+          <label class="chk" for="admAim"><input type="checkbox" id="admAim"> Автоприцел <kbd>B</kbd></label>
+          <label class="chk" for="admGod"><input type="checkbox" id="admGod"> Неуязвимость <kbd>N</kbd></label>
+          <div class="admRow">
+            <button type="button" class="ghost" id="admKill">Обнулить цель <kbd>K</kbd></button>
+            <button type="button" class="ghost" id="admHeal">Дать свежесть <kbd>H</kbd></button>
+            <input type="number" id="admHp" min="1" max="9999" value="500" aria-label="Сколько свежести выдавать">
+          </div>
+          <p class="note">Наведись на огурца и жми: соперника обнуляет, своему (или себе, если никто не в прицеле) ставит указанное здоровье. В онлайне чужое здоровье меняется только с правами от сервера.</p>
+        </div>
+      </div>
     </section>
 
     <section class="pane" id="pane-controls" role="tabpanel" aria-labelledby="tab-controls" hidden>
@@ -417,6 +473,7 @@
   </div>
 
   <div class="panel" id="lobbyPanel" hidden>
+    <div class="charBox" id="charHostLobby" hidden></div>
     <div class="lobbyHead">
       <div>
         <span class="lbl">Код лобби — отправь друзьям</span>
@@ -455,6 +512,8 @@
 <script src="pickups.js"></script>
 <script src="knife.js"></script>
 <script src="chars.js"></script>
+<script src="charview.js"></script>
+<script src="admin.js"></script>
 <script src="skins.js"></script>
 <script src="music.js"></script>
 <script src="game.js"></script>

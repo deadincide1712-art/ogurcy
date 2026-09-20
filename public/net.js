@@ -120,6 +120,7 @@ function onServer(m) {
     }
     case 'list': renderRooms(m.rooms); break;
     case 'error': netMsg(m.msg); break;
+    case 'adminok': if (typeof ADMIN === 'object') { ADMIN.server = true; if (typeof adminFlash === 'function') adminFlash('Права админа подтверждены сервером'); } break;
     case 'closed': leaveOnline(m.reason); break;
     case 'left': {
       const e = entById(m.id);
@@ -127,7 +128,7 @@ function onServer(m) {
       break;
     }
     case 'late': if (NET.isHost && NET.inGame) hostAddLate(m); break;
-    case 'msg': onGame(m.from, m.d); break;
+    case 'msg': onGame(m.from, m.d, m.adm); break;
   }
 }
 
@@ -135,8 +136,14 @@ function onServer(m) {
 function showLobby() {
   if (document.exitPointerLock && document.pointerLockElement) document.exitPointerLock();
   $('menu').hidden = false; $('mainPanel').hidden = true; $('lobbyPanel').hidden = false;
+  $('charHostLobby').hidden = false;
+  if (typeof charViewMoveTo === 'function') charViewMoveTo('charHostLobby');
 }
-function showMain() { $('menu').hidden = false; $('mainPanel').hidden = false; $('lobbyPanel').hidden = true; }
+function showMain() {
+  $('menu').hidden = false; $('mainPanel').hidden = false; $('lobbyPanel').hidden = true;
+  $('charHostLobby').hidden = true;
+  if (typeof charViewMoveTo === 'function') charViewMoveTo('charHost');
+}
 function lobbySettings() {
   return { map: $('lMap').value, mode: $('lMode').value, diff: +$('lDiff').value, bots: +$('lBots').value };
 }
@@ -262,8 +269,9 @@ function backToLobby() {
 }
 
 // ---------- игровые сообщения ----------
-function onGame(from, d) {
+function onGame(from, d, isAdmin) {
   if (!d || !d.k) return;
+  if (d.k === 'adm') { if (isAdmin && NET.isHost && typeof adminApply === 'function') adminApply(d); return; }  // команда админа — только с правами от сервера
   if (d.k === 'start') { if (!NET.isHost) startOnline(d); return; }
   if (!NET.inGame) return;
   switch (d.k) {
