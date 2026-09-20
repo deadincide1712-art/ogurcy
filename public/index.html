@@ -413,6 +413,13 @@
 
     <section class="pane" id="pane-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
       <div class="row">
+        <span class="lbl">Язык</span>
+        <div class="seg" id="langPick">
+          <button type="button" data-lang="ru" aria-pressed="true">Русский</button>
+          <button type="button" data-lang="en" aria-pressed="false">English</button>
+        </div>
+      </div>
+      <div class="row">
         <span class="lbl">Звук</span>
         <div class="vols">
           <label class="vol" for="musicVol"><span>Музыка</span><input type="range" min="0" max="100" step="1" id="musicVol" class="vol-music"><output></output></label>
@@ -517,4 +524,5 @@
 <script src="skins.js"></script>
 <script src="music.js"></script>
 <script src="game.js"></script>
+<script src="lang.js"></script>
 <script src="net.js"></script>
