@@ -189,7 +189,7 @@ const eyeBlack = new THREE.MeshBasicMaterial({ color: 0x111111 });
 const gunMat = new THREE.MeshStandardMaterial({ color: 0x2d3336, metalness: .6, roughness: .45 });
 const flowerMat = new THREE.MeshStandardMaterial({ color: 0xffd23a, roughness: .6 });
 
-function makeCucumber(hue, bandColor, kind) {
+function makeCucumber(hue, bandColor, kind, charId) {
   const g = new THREE.Group();
   const skin = new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL(hue, .55, .38), map: texSkin, roughness: .65 });
   const body = new THREE.Mesh(new THREE.CapsuleGeometryShim(.44, 1.84), skin);
@@ -216,7 +216,8 @@ function makeCucumber(hue, bandColor, kind) {
   const w = buildWeapon(kind || 'rifle', skin, false);
   w.g.rotation.y = Math.PI; w.g.scale.setScalar(1.15); gun.add(w.g);
   gun.position.set(-.34, .98, .4); g.add(gun);
-  g.userData = { skin, body, gun, flash: w.flash };
+  g.userData = { skin, body, gun, flash: w.flash, char: charId || 'classic' };
+  if (charId && typeof CHAR_BUILD === 'object' && CHAR_BUILD[charId]) CHAR_BUILD[charId](g, g.userData);  // скин огурца
   return g;
 }
 

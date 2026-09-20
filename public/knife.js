@@ -79,6 +79,7 @@ function recordKill(weapon) {
   if (weapon === 'knife') recordKnifeKill();
   try { localStorage.setItem('ogurcy-progress', JSON.stringify({ kills: totalKills })); } catch (e) {}
   for (const [k, sk] of Object.entries(KNIFE_SKINS)) if (sk.need && before < sk.need && totalKills >= sk.need) showUnlock(k);
+  if (typeof checkCharUnlocks === 'function') checkCharUnlocks(before, totalKills);
   renderKnifePick();
 }
 let unlockTimer = null;

@@ -259,6 +259,7 @@
       <button type="button" role="tab" id="tab-online" data-tab="online" aria-selected="false" aria-controls="pane-online">Онлайн</button>
       <button type="button" role="tab" id="tab-guns" data-tab="guns" aria-selected="false" aria-controls="pane-guns">Оружие</button>
       <button type="button" role="tab" id="tab-knives" data-tab="knives" aria-selected="false" aria-controls="pane-knives">Ножи</button>
+      <button type="button" role="tab" id="tab-char" data-tab="char" aria-selected="false" aria-controls="pane-char">Огурец</button>
       <button type="button" role="tab" id="tab-settings" data-tab="settings" aria-selected="false" aria-controls="pane-settings">Настройки</button>
       <button type="button" role="tab" id="tab-controls" data-tab="controls" aria-selected="false" aria-controls="pane-controls">Управление</button>
     </nav>
@@ -364,6 +365,15 @@
       </div>
     </section>
 
+    <section class="pane" id="pane-char" role="tabpanel" aria-labelledby="tab-char" hidden>
+      <div class="row">
+        <span class="lbl">Скин огурца</span>
+        <div class="seg" id="charPick"></div>
+        <p class="note" id="charHint"></p>
+        <p class="note">Открываются за общее число нарезок: 15 — маринованный, 40 — малосольный в банке, 100 — учёный, 200 — золотой.</p>
+      </div>
+    </section>
+
     <section class="pane" id="pane-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
       <div class="row">
         <span class="lbl">Звук</span>
@@ -444,6 +454,7 @@
 <script src="modes.js"></script>
 <script src="pickups.js"></script>
 <script src="knife.js"></script>
+<script src="chars.js"></script>
 <script src="skins.js"></script>
 <script src="music.js"></script>
 <script src="game.js"></script>

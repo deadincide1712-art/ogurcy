@@ -37,9 +37,11 @@ function makeEnt(name, isPlayer, i, team) {
     ammo: {}, reserve: {}, cool: 0, reloading: 0, jars: 2, onGround: false,
     ai: { wp: null, stuck: 0, target: null, seen: 0, strafe: 1, strafeT: 0, lastPos: new THREE.Vector3() },
   };
+  e.charSkin = isPlayer ? (typeof charSkin === 'string' ? charSkin : 'classic')
+    : (typeof BOT_CHARS !== 'undefined' ? BOT_CHARS[i % BOT_CHARS.length] : 'classic');
   giveLoadout(e);
   if (!isPlayer) {
-    e.mesh = makeCucumber(hue, e.color, e.weapon); scene.add(e.mesh);
+    e.mesh = makeCucumber(hue, e.color, e.weapon, e.charSkin); scene.add(e.mesh);
     e.tag = makeTag(name, e.color); scene.add(e.tag);
     applyRelationLook(e); // подсветка своих и чужих в командных режимах
   }

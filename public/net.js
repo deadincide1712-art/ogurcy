@@ -273,6 +273,7 @@ function onGame(from, d) {
       const skinChanged = (d.ks && d.ks !== e.knifeSkin) || (d.kf && d.kf !== e.knifeFin);
       if (d.ks) e.knifeSkin = d.ks; if (d.kf) e.knifeFin = d.kf;
       const gsChanged = d.gs && d.gs !== e.gunSkin; if (gsChanged) e.gunSkin = d.gs;
+      if (d.cs && d.cs !== e.charSkin) { e.charSkin = d.cs; rebuildCharMesh(e); }   // сменил скин огурца
       if (d.w && WEAPONS[d.w] && (d.w !== e.weapon || (d.w === 'knife' && skinChanged) || (d.w !== 'knife' && gsChanged))) { e.weapon = d.w; setGunModel(e, d.w); }
       break;
     }
@@ -357,7 +358,7 @@ function netTick(dt) {
   NET.tSt -= dt; NET.tBots -= dt; NET.tScore -= dt;
   if (NET.tSt <= 0 && player.alive) {
     NET.tSt = .05;
-    relay({ k: 'st', x: r2(player.pos.x), y: r2(player.pos.y), z: r2(player.pos.z), yaw: r2(player.yaw), pitch: r2(player.pitch), w: player.weapon, ks: knifeSkin, kf: knifeFinOf(knifeSkin), gs: player.weapon === 'knife' ? undefined : gunSkinOf(player.weapon), vx: r2(player.vel.x), vz: r2(player.vel.z) });
+    relay({ k: 'st', x: r2(player.pos.x), y: r2(player.pos.y), z: r2(player.pos.z), yaw: r2(player.yaw), pitch: r2(player.pitch), w: player.weapon, ks: knifeSkin, kf: knifeFinOf(knifeSkin), cs: charSkin, gs: player.weapon === 'knife' ? undefined : gunSkinOf(player.weapon), vx: r2(player.vel.x), vz: r2(player.vel.z) });
   }
   if (!NET.isHost) return;
   if (NET.tBots <= 0) {
