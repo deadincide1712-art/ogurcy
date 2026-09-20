@@ -1,5 +1,5 @@
 // ================= Огуречные Шокеры — мир, модели, эффекты =================
-const ARENA = 46;               // половина размера грядки
+const ARENA = 58;               // половина размера грядки
 const GRAV = 22;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
