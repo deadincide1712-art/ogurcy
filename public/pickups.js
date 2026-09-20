@@ -248,7 +248,7 @@ function clearRockets() { for (const r of rockets) scene.remove(r.mesh); rockets
 function setGunModel(e, kind) {
   const ud = e.mesh.userData;
   while (ud.gun.children.length) ud.gun.remove(ud.gun.children[0]);
-  const w = buildWeapon(kind, ud.skin, false, kind === 'knife' ? e.knifeSkin : e.gunSkin);
+  const w = buildWeapon(kind, ud.skin, false, kind === 'knife' ? e.knifeSkin : e.gunSkin, e.knifeFin);
   w.g.rotation.y = Math.PI; w.g.scale.setScalar(1.15); ud.gun.add(w.g); ud.flash = w.flash;
 }
 const BOT_FALLBACK = ['rifle', 'smg', 'shotgun', 'sniper', 'pistol']; // ракетницей боты не пользуются

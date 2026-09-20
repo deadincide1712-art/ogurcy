@@ -13,6 +13,62 @@ const KNIFE_POSE = {
   golden:    { pos: [.13, -.1, -.26], rot: [.25, .4, -.4] },
 };
 let knifeSkin = 'chef';
+// ---------- скины ножей: открываются за нарезки этим же ножом ----------
+const KNIFE_FINS = {
+  base:   { name: 'Заводской', need: 0 },
+  garlic: { name: 'Чеснок', need: 10, icon: '🧄' },
+  chili:  { name: 'Чили', need: 30, icon: '🌶️' },
+  gold:   { name: 'Золотой', need: 75, icon: '🏆' },
+};
+let knifeKills = {}, knifeFins = {};
+try { knifeKills = JSON.parse(localStorage.getItem('ogurcy-knifekills') || '{}') || {}; } catch (e) {}
+try { knifeFins = JSON.parse(localStorage.getItem('ogurcy-knifefins') || '{}') || {}; } catch (e) {}
+const knifeFinOpen = (k, f) => (knifeKills[k] || 0) >= KNIFE_FINS[f].need;
+const knifeFinOf = k => (knifeFins[k] && KNIFE_FINS[knifeFins[k]] && knifeFinOpen(k, knifeFins[k])) ? knifeFins[k] : 'base';
+function saveKnifeFins() {
+  try { localStorage.setItem('ogurcy-knifekills', JSON.stringify(knifeKills)); localStorage.setItem('ogurcy-knifefins', JSON.stringify(knifeFins)); } catch (e) {}
+}
+function setKnifeFin(k, f) {
+  if (!knifeFinOpen(k, f)) return;
+  knifeFins[k] = f; saveKnifeFins(); renderKnifeFins();
+  if (running && player && player.weapon === 'knife' && k === knifeSkin) buildViewmodel();
+}
+function recordKnifeKill() {
+  const k = knifeSkin, before = knifeKills[k] || 0, after = before + 1;
+  knifeKills[k] = after;
+  for (const [id, f] of Object.entries(KNIFE_FINS)) {
+    if (f.need && before < f.need && after >= f.need) {
+      knifeFins[k] = id;
+      popUnlock(f.icon, `${KNIFE_SKINS[k].name} · ${f.name}`, 'Новый скин ножа!', `За ${f.need} нарезок этим ножом · уже надет · сменить можно в разделе «Ножи»`);
+      if (running && player && player.weapon === 'knife') buildViewmodel();
+    }
+  }
+  saveKnifeFins(); renderKnifeFins();
+}
+function renderKnifeFins() {
+  const list = document.getElementById('knifeSkinList'); if (!list) return;
+  list.textContent = '';
+  for (const k of Object.keys(KNIFE_SKINS)) {
+    if (!isUnlocked(k)) continue;
+    const row = document.createElement('div'); row.className = 'gsRow';
+    const head = document.createElement('div'); head.className = 'gsHead';
+    const nm = document.createElement('b'); nm.textContent = KNIFE_SKINS[k].name;
+    const cnt = document.createElement('span'); cnt.textContent = `нарезано: ${knifeKills[k] || 0}`;
+    head.append(nm, cnt);
+    const chips = document.createElement('div'); chips.className = 'seg';
+    for (const [id, f] of Object.entries(KNIFE_FINS)) {
+      const b = document.createElement('button'); b.type = 'button';
+      const open = knifeFinOpen(k, id);
+      b.textContent = open ? (f.icon ? f.icon + ' ' : '') + f.name : `🔒 ${f.name} · ${f.need}`;
+      b.disabled = !open; b.classList.toggle('locked', !open);
+      b.setAttribute('aria-pressed', String(knifeFinOf(k) === id));
+      b.addEventListener('click', () => setKnifeFin(k, id));
+      chips.append(b);
+    }
+    row.append(head, chips); list.append(row);
+  }
+}
+
 let totalKills = 0;
 try { totalKills = +(JSON.parse(localStorage.getItem('ogurcy-progress') || '{}').kills) || 0; } catch (e) {}
 const isUnlocked = s => KNIFE_SKINS[s] && totalKills >= KNIFE_SKINS[s].need;
@@ -20,6 +76,7 @@ try { const s = localStorage.getItem('ogurcy-knife'); if (KNIFE_SKINS[s] && isUn
 function recordKill(weapon) {
   const before = totalKills;
   totalKills += weapon === 'knife' ? 2 : 1;
+  if (weapon === 'knife') recordKnifeKill();
   try { localStorage.setItem('ogurcy-progress', JSON.stringify({ kills: totalKills })); } catch (e) {}
   for (const [k, sk] of Object.entries(KNIFE_SKINS)) if (sk.need && before < sk.need && totalKills >= sk.need) showUnlock(k);
   renderKnifePick();
@@ -50,6 +107,7 @@ function setKnifeSkin(s) {
   knifeSkin = s;
   try { localStorage.setItem('ogurcy-knife', s); } catch (e) {}
   if (running && player && player.weapon === 'knife') buildViewmodel();
+  renderKnifeFins();
 }
 
 // ---------- удары ----------
@@ -121,7 +179,9 @@ function startInspect() {
   if (!player || !player.alive || player.reloading > 0 || scoped) return;
   if (inspect && inspect.t < inspect.dur * .8) return;
   const melee = WEAPONS[player.weapon].melee;
-  inspect = { t: 0, dur: melee ? (knifeSkin === 'butterfly' ? 2.8 : 2.4) : 2, melee };
+  const list = melee ? KNIFE_ANIMS[knifeSkin] : null;
+  const anim = list ? list[Math.floor(Math.random() * list.length)] : null;   // какая анимация выпадет — случайно
+  inspect = { t: 0, dur: anim ? anim.dur : 2, melee, anim };
 }
 function cancelInspect() { inspect = null; swing = null; }
 const ease = x => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
@@ -154,26 +214,81 @@ function updateKnifeVM(dt) {
   } else {
     // отводим нож подальше от лица, чтобы при вращении он не закрывал экран
     vm.rotation.y += inO * .7; vm.rotation.x += inO * .25; vm.position.x -= inO * .07; vm.position.y += inO * .045; vm.position.z -= inO * .17;
-    if (knifeSkin === 'chef' || knifeSkin === 'golden') {
-      // показываем одну сторону, переворачиваем, подкидываем с оборотом
-      spin.rotation.z = seg(t, .25, .4) * Math.PI - seg(t, .45, .6) * Math.PI;
-      spin.rotation.x = -seg(t, .6, .82) * Math.PI * 2;
-      vm.position.y += Math.sin(seg(t, .6, .82) * Math.PI) * .06;
-    } else if (knifeSkin === 'karambit') {
-      // два оборота на кольце-хвостике, потом лезвие к камере
-      spin.rotation.x = -(seg(t, .15, .45) + seg(t, .5, .72)) * Math.PI * 2;
-      spin.rotation.z = seg(t, .75, .85) * .6 * (1 - seg(t, .88, .95));
-    } else {
-      // бабочка: закрыть, открыть, закрыть, открыть — с кувырками
-      const flips = [[.12, .24], [.28, .4], [.46, .58], [.62, .74]];
-      let a = 0; flips.forEach(([f0, f1], i) => { a += (i % 2 ? -1 : 1) * seg(t, f0, f1) * Math.PI; });
-      vmW.handles[0].rotation.x = a; vmW.handles[1].rotation.x = -a;
-      spin.rotation.z = seg(t, .12, .74) * Math.PI * 4;
-      vm.position.y += Math.sin(seg(t, .76, .9) * Math.PI) * .05; spin.rotation.x = -seg(t, .76, .9) * Math.PI * 2;
-    }
+    if (inspect.anim) inspect.anim.fn(t, { vm, spin, handles: vmW.handles, inO });
   }
   if (inspect.t >= inspect.dur) inspect = null;
 }
+
+// ---------- анимации осмотра: по две на каждый нож, выпадают случайно ----------
+const KNIFE_ANIMS = {
+  chef: [
+    { dur: 2.4, fn: (t, c) => {   // показать обе стороны и подбросить с оборотом
+      c.spin.rotation.z = seg(t, .25, .4) * Math.PI - seg(t, .45, .6) * Math.PI;
+      c.spin.rotation.x = -seg(t, .6, .82) * Math.PI * 2;
+      c.vm.position.y += Math.sin(seg(t, .6, .82) * Math.PI) * .06;
+    } },
+    { dur: 2.6, fn: (t, c) => {   // три быстрых шинковки по воздуху и вертушка на пальце
+      let chop = 0;
+      for (const a of [.08, .2, .32]) chop += Math.sin(seg(t, a, a + .1) * Math.PI);
+      c.vm.position.y -= chop * .07; c.vm.rotation.x += chop * .5;
+      c.spin.rotation.x = seg(t, .46, .8) * Math.PI * 4;                       // вертушка вокруг рукояти
+      c.spin.rotation.z = Math.sin(seg(t, .46, .8) * Math.PI) * .5;
+      c.vm.position.x -= Math.sin(seg(t, .46, .86) * Math.PI) * .04;
+      c.vm.rotation.z += seg(t, .84, .95) * .35 * (1 - seg(t, .95, 1));        // финальный доворот лезвием к себе
+    } },
+  ],
+  karambit: [
+    { dur: 2.4, fn: (t, c) => {   // два оборота на кольце-хвостике, потом лезвие к камере
+      c.spin.rotation.x = -(seg(t, .15, .45) + seg(t, .5, .72)) * Math.PI * 2;
+      c.spin.rotation.z = seg(t, .75, .85) * .6 * (1 - seg(t, .88, .95));
+    } },
+    { dur: 2.8, fn: (t, c) => {   // перехват в обратный хват, вертолёт на кольце и возврат
+      const grip = seg(t, .1, .26) - seg(t, .74, .9);
+      c.spin.rotation.z = grip * Math.PI;                                      // переворот в обратный хват
+      c.spin.rotation.x = -seg(t, .3, .68) * Math.PI * 6;                      // три оборота вокруг кольца
+      c.spin.rotation.y = Math.sin(seg(t, .3, .7) * Math.PI) * .7;
+      c.vm.position.x -= Math.sin(seg(t, .3, .72) * Math.PI) * .05;
+      c.vm.position.y += Math.sin(seg(t, .3, .72) * Math.PI) * .03;
+      c.vm.rotation.z -= grip * .3;
+    } },
+  ],
+  butterfly: [
+    { dur: 2.8, fn: (t, c) => {   // классика: закрыть, открыть, закрыть, открыть — с кувырками
+      const flips = [[.12, .24], [.28, .4], [.46, .58], [.62, .74]];
+      let a = 0; flips.forEach(([f0, f1], i) => { a += (i % 2 ? -1 : 1) * seg(t, f0, f1) * Math.PI; });
+      c.handles[0].rotation.x = a; c.handles[1].rotation.x = -a;
+      c.spin.rotation.z = seg(t, .12, .74) * Math.PI * 4;
+      c.vm.position.y += Math.sin(seg(t, .76, .9) * Math.PI) * .05;
+      c.spin.rotation.x = -seg(t, .76, .9) * Math.PI * 2;
+    } },
+    { dur: 3.2, fn: (t, c) => {   // «вертолёт»: створки расходятся веером, нож крутится и уходит в подброс
+      const fan = seg(t, .06, .2) - seg(t, .76, .9);
+      c.handles[0].rotation.x = fan * Math.PI * .9;
+      c.handles[1].rotation.x = -fan * Math.PI * .9 + Math.sin(seg(t, .24, .62) * Math.PI * 3) * .8; // вторая створка мелет
+      c.spin.rotation.z = (seg(t, .2, .46) + seg(t, .48, .7)) * Math.PI * 2;                          // два полных оборота
+      c.spin.rotation.y = Math.sin(seg(t, .22, .72) * Math.PI) * 1.1;                                 // разворот лезвием к камере
+      const toss = Math.sin(seg(t, .66, .94) * Math.PI);
+      c.vm.position.y += toss * .085; c.vm.position.z -= toss * .05;                                  // подброс и ловля
+      c.spin.rotation.x = -seg(t, .66, .94) * Math.PI * 2;
+      c.vm.rotation.z += Math.sin(seg(t, .1, .95) * Math.PI) * .25;
+    } },
+  ],
+  golden: [
+    { dur: 2.4, fn: (t, c) => {   // как у шинковщика: обе стороны и оборот
+      c.spin.rotation.z = seg(t, .25, .4) * Math.PI - seg(t, .45, .6) * Math.PI;
+      c.spin.rotation.x = -seg(t, .6, .82) * Math.PI * 2;
+      c.vm.position.y += Math.sin(seg(t, .6, .82) * Math.PI) * .06;
+    } },
+    { dur: 3, fn: (t, c) => {     // медленная «витрина»: нож проплывает перед лицом, ловя блики
+      c.spin.rotation.y = seg(t, .1, .5) * Math.PI * 2;
+      c.spin.rotation.z = Math.sin(seg(t, .1, .6) * Math.PI) * .45;
+      c.vm.position.y += Math.sin(seg(t, .05, .6) * Math.PI) * .05;
+      c.vm.position.x -= Math.sin(seg(t, .05, .6) * Math.PI) * .05;
+      c.spin.rotation.x = -seg(t, .62, .92) * Math.PI * 4;                     // финальная двойная вертушка
+      c.vm.position.y += Math.sin(seg(t, .62, .92) * Math.PI) * .07;
+    } },
+  ],
+};
 
 // ---------- выбор ножа в меню: закрытые — с замком и порогом ----------
 function renderKnifePick() {
@@ -194,5 +309,5 @@ function renderKnifePick() {
 (() => {
   const box = document.getElementById('knifePick'); if (!box) return;
   box.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.disabled) { setKnifeSkin(b.dataset.k); renderKnifePick(); } });
-  renderKnifePick();
+  renderKnifePick(); renderKnifeFins();
 })();

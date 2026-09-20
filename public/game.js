@@ -130,6 +130,7 @@ function fire(e, extraSpread) {
   const base = dirOf(e.yaw, e.pitch, new THREE.Vector3());
   let spread = w.spread + extraSpread;
   if (e.isPlayer && w.scope && scoped) spread = .002;
+  else if (e.isPlayer && ads > .5) spread *= .35;      // по мушке бьём заметно точнее
   const muzzle = e.isPlayer
     ? o.clone().add(base.clone().multiplyScalar(.9)).add(new THREE.Vector3(Math.cos(e.yaw) * .22, -.22, -Math.sin(e.yaw) * .22))
     : o.clone().add(base.clone().multiplyScalar(.8)).add(new THREE.Vector3(Math.cos(e.yaw) * .38, -.6, -Math.sin(e.yaw) * .38));
@@ -353,7 +354,7 @@ function drawEnt(e, dt) {
 
 // ---------- игрок: ввод ----------
 const keys = {};
-let mouseDown = false, scoped = false, locked = false, recoil = 0, flash = 0, hurtFlash = 0, shake = 0, deathCam = null, now = 0;
+let mouseDown = false, scoped = false, adsOn = false, ads = 0, locked = false, recoil = 0, flash = 0, hurtFlash = 0, shake = 0, deathCam = null, now = 0;
 addEventListener('keydown', e => {
   if (!running) return;
   keys[e.code] = true;
@@ -381,15 +382,16 @@ addEventListener('mousedown', e => {
   if (!locked) { try { const r = renderer.domElement.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (err) {} }
   if (e.button === 0) { mouseDown = true; if (!WEAPONS[player.weapon].auto) fire(player, moveSpread()); }
   if (e.button === 2 && WEAPONS[player.weapon].scope && player.alive) scoped = !scoped;
+  else if (e.button === 2 && player.alive && vmW && vmW.sight) adsOn = true;   // прицеливание по мушке — пока держишь ПКМ
   if (e.button === 2 && WEAPONS[player.weapon].melee) meleeAttack(player, true);
 });
-addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; });
+addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; if (e.button === 2) adsOn = false; });
 addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('wheel', e => { if (!paused && running && player.alive) switchWeapon(player.weapon === 'knife' ? (player.primary || 'rifle') : 'knife'); });
 addEventListener('mousemove', e => {
   if (paused || !running || !player.alive) return;
   if (Math.abs(e.movementX) > 350 || Math.abs(e.movementY) > 350) return;
-  const sens = .0023 * (scoped ? .35 : 1);
+  const sens = .0023 * (scoped ? .35 : 1 - ads * .4);
   player.yaw -= e.movementX * sens;
   player.pitch = THREE.MathUtils.clamp(player.pitch - e.movementY * sens, -1.5, 1.5);
   swayX = THREE.MathUtils.clamp(swayX + e.movementX * .00025, -.04, .04);
@@ -398,7 +400,7 @@ addEventListener('mousemove', e => {
 function switchWeapon(k) {
   if (k === player.weapon) return;
   if (player.owned && !player.owned.includes(k)) return; // в руках только основной ствол и нож
-  player.weapon = k; player.reloading = 0; player.cool = .35; scoped = false; cancelInspect(); buildViewmodel();
+  player.weapon = k; player.reloading = 0; player.cool = .35; scoped = false; adsOn = false; ads = 0; cancelInspect(); buildViewmodel();
 }
 function moveSpread() { const sp = Math.hypot(player.vel.x, player.vel.z); return (player.onGround ? sp * .004 : .05); }
 
@@ -422,12 +424,12 @@ document.addEventListener('pointerlockchange', () => {
 const vm = new THREE.Group(); vmScene.add(vm);
 const VM_POS = { knife: [.15, -.15, -.28], rifle: [.15, -.14, -.3], shotgun: [.16, -.14, -.3], sniper: [.24, -.15, -.52], smg: [.15, -.14, -.27], rocket: [.24, -.19, -.66], pistol: [.11, -.1, -.3] };
 const VM_ROT = { knife: [.35, .15, -.35], rifle: [.02, .1, -.4], shotgun: [.02, .1, -.4], sniper: [0, .12, -.45], smg: [.02, .1, -.35], rocket: [.02, .1, -.22], pistol: [.03, .25, -.25] };
-const vmBase = new THREE.Vector3();
+const vmBase = new THREE.Vector3(), ADS_POS = new THREE.Vector3();
 const vmHandMat = new THREE.MeshStandardMaterial({ color: 0x3a7420, map: texSkin, roughness: .55 });
 let vmW = null, swayX = 0, swayY = 0, drawT = 0;
 function buildViewmodel() {
   while (vm.children.length) vm.remove(vm.children[0]);
-  vmW = buildWeapon(player.weapon, vmHandMat, true, player.weapon === 'knife' ? knifeSkin : gunSkinOf(player.weapon));
+  vmW = buildWeapon(player.weapon, vmHandMat, true, player.weapon === 'knife' ? knifeSkin : gunSkinOf(player.weapon), player.weapon === 'knife' ? knifeFinOf(knifeSkin) : null);
   const pose = player.weapon === 'knife' ? KNIFE_POSE[knifeSkin] : { pos: VM_POS[player.weapon], rot: VM_ROT[player.weapon] }; // у каждого ножа своя поза
   vmW.g.rotation.set(...pose.rot);
   vm.add(vmW.g);
@@ -506,6 +508,7 @@ function updateHUD(dt) {
   if (streakT > 0) { streakT -= dt; if (streakT <= 0) { $('streak').style.opacity = 0; $('streak').style.color = ''; } }
   hurtFlash = Math.max(0, hurtFlash - dt * 1.2);
   $('vign').style.opacity = Math.max(hurtFlash, player.alive && player.hp < 35 ? .35 : 0);
+  $('cross').style.opacity = ads > .6 ? 0 : 1;
   const sc = scoped && player.alive;
   $('scope').style.display = sc ? 'block' : 'none';
   $('cross').style.display = sc ? 'none' : 'block';
@@ -594,7 +597,10 @@ function frame(t) {
     camera.position.set(p.pos.x, p.pos.y + (p.alive ? EYE + Math.sin(bob * 2) * .035 * Math.min(1, speed / 7) : .5), p.pos.z);
     if (!p.alive) { camera.position.y = .6; }
     camera.rotation.set(p.pitch + recoil + (Math.random() - .5) * shake * .1, p.yaw + (Math.random() - .5) * shake * .1, p.alive ? 0 : .5);
-    const fov = scoped && p.alive ? 22 : 75;
+    const canAds = adsOn && p.alive && !paused && vmW && vmW.sight && p.reloading <= 0 && !inspect;
+    ads += ((canAds ? 1 : 0) - ads) * Math.min(1, dt * 11);
+    if (ads < .001) ads = 0;
+    const fov = scoped && p.alive ? 22 : 75 - ads * 14;
     if (Math.abs(camera.fov - fov) > .1) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 18); camera.updateProjectionMatrix(); }
     // покачивание, отдача, перезарядка и доставание оружия
     const mv = Math.min(1, speed / 7), W = WEAPONS[p.weapon];
@@ -610,6 +616,13 @@ function frame(t) {
     updateKick(dt);
     vm.position.z += kick.z; vm.position.y += kick.rx * .06; vm.rotation.x += kick.rx; vm.rotation.z += kick.rz; vm.rotation.y += kick.rz * .4;
     updateKnifeVM(dt);
+    if (ads > 0 && vmW && vmW.sight) {
+      // подводим мушку на середину экрана: ствол выпрямляется и уходит к центру
+      vm.position.lerp(ADS_POS.set(0, -vmW.sight[1], -.2), ads);
+      vm.rotation.set(vm.rotation.x * (1 - ads), vm.rotation.y * (1 - ads), vm.rotation.z * (1 - ads));
+      const R = VM_ROT[p.weapon] || [0, 0, 0];
+      vmW.g.rotation.set(R[0] * (1 - ads), R[1] * (1 - ads), R[2] * (1 - ads));
+    }
     if (vmW && vmW.mag) { vmW.mag.position.y = vmW.magY - Math.min(1, rs * 1.8) * .35; vmW.mag.visible = !(p.weapon === 'rocket' && p.ammo.rocket === 0 && p.reloading <= 0); }
     flash = Math.max(0, flash - dt);
     if (vmW) {

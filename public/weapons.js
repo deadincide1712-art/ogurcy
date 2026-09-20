@@ -102,6 +102,21 @@ function triggerSet(g, u, mat, v = 0) {
   const tr = prof([[u - .004, v - .002], [u + .006, v - .002], [u, v - .026], [u - .008, v - .024]], .008, WM.dark, .002); g.add(tr);
 }
 
+
+// ---------- открытый прицел: целик сзади, мушка с ярким зерном спереди ----------
+const beadMat = c => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: .5, roughness: .4 });
+const BEAD = beadMat(0xd4ec6a);
+function sights(g, uRear, vRear, uFront, vFront, mat = WM.dark) {
+  const top = Math.max(vRear, vFront) + .022;                    // линия прицеливания
+  const hr = top - vRear, hf = top - vFront;
+  for (const s of [-1, 1]) g.add(mk(new THREE.BoxGeometry(.005, hr, .008), mat, s * .0095, vRear + hr / 2, -uRear));
+  g.add(mk(new THREE.BoxGeometry(.023, .004, .008), mat, 0, vRear + hr * .42, -uRear));        // перемычка целика
+  g.add(mk(new THREE.BoxGeometry(.004, hf, .005), mat, 0, vFront + hf / 2, -uFront));          // стойка мушки
+  for (const s of [-1, 1]) g.add(mk(new THREE.BoxGeometry(.0035, hf * .92, .006), mat, s * .011, vFront + hf * .52, -uFront)); // ушки
+  g.add(mk(new THREE.SphereGeometry(.0042, 10, 8), BEAD, 0, top, -uFront));                    // зерно мушки
+  return [uFront, top];
+}
+
 // ---------- Рассол-47 ----------
 function buildRifle() {
   const g = new THREE.Group();
@@ -133,7 +148,8 @@ function buildRifle() {
   const ch = mk(new THREE.CylinderGeometry(.006, .006, .04, 10), WM.steel, .04, .052, -.13); ch.rotation.z = Math.PI / 2; g.add(ch);
   g.add(mk(new THREE.SphereGeometry(.011, 12, 8), WM.steel, .06, .052, -.13));
   g.add(label('РАССОЛ-47', '#e8c160', .06, .03, .15));
-  return { g, mag, muzzle: [.79, .04], grip: [-.05, -.06], fore: [.34, .02] };
+  const sight = sights(g, .21, .086, .69, .052);
+  return { g, mag, muzzle: [.79, .04], grip: [-.05, -.06], fore: [.34, .02], sight };
 }
 
 // ---------- Укроп-12 ----------
@@ -182,7 +198,8 @@ function buildShotgun() {
   dill.position.set(-.042, .075, 0); dill.rotation.z = .2; g.add(dill);
   for (const u of [.3, .52]) g.add(mk(new THREE.TorusGeometry(.047, .0028, 6, 24), WM.string, 0, .062, -u));
   g.add(label('УКРОП-12', '#3a2a14', .03, .03, .11));
-  return { g, mag: null, muzzle: [.75, .062], grip: [-.1, -.04], fore: [.3, .02] };
+  const sight = sights(g, .17, .09, .7, .09);
+  return { g, mag: null, muzzle: [.75, .062], grip: [-.1, -.04], fore: [.3, .02], sight };
 }
 
 // ---------- Кабачок-М ----------
@@ -253,7 +270,8 @@ function buildSMG() {
   for (const s of [-1, 1]) g.add(tube(.006, .006, -.3, -.08, WM.steel, .04 + s * .018 - .01, 0, 8));
   g.add(prof([[-.31, -.03], [-.29, -.03], [-.29, .07], [-.31, .07]], .05, WM.rubber, .004));
   g.add(label('ШИНКОВКА', '#e8c160', .07, .04, .12, .0255));
-  return { g, mag, muzzle: [.5, .035], grip: [-.04, -.06], fore: [.29, -.04] };
+  const sight = sights(g, .06, .084, .43, .062);
+  return { g, mag, muzzle: [.5, .035], grip: [-.04, -.06], fore: [.29, -.04], sight };
 }
 
 // ---------- Огурцомёт (ракетница, стреляет большими огурцами) ----------
@@ -279,7 +297,8 @@ function buildRocket() {
   triggerSet(g, .02, WM.metal, -.012);
   g.add(prof([[-.34, -.015], [-.18, -.015], [-.2, -.06], [-.34, -.06]], .06, WM.rubber, .006));
   g.add(label('ОГУРЦОМЁТ', '#f2e6a0', -.05, .06, .2, .077));
-  return { g, mag: shell, muzzle: [.61, .06], grip: [-.04, -.07], fore: [.22, -.07] };
+  const sight = sights(g, .09, .18, .47, .137);
+  return { g, mag: shell, muzzle: [.61, .06], grip: [-.04, -.07], fore: [.22, -.07], sight };
 }
 
 // ---------- Корнишон-9 (пистолет) ----------
@@ -293,7 +312,8 @@ function buildPistol() {
   g.add(mk(new THREE.SphereGeometry(.012, 10, 8), WM.pickle, -.0185, -.045, .03));               // значок-огурчик на щёчке
   triggerSet(g, .035, WM.metal);
   g.add(label('КОРНИШОН-9', '#3a2a14', .07, .042, .09, .0185));
-  return { g, mag: null, muzzle: [.19, .045], grip: [-.03, -.05], fore: [-.01, -.08] };
+  const sight = sights(g, -.025, .066, .15, .066);
+  return { g, mag: null, muzzle: [.19, .045], grip: [-.03, -.05], fore: [-.01, -.08], sight };
 }
 
 // ---------- Ножи: у каждого внутренняя группа spin — её крутит анимация осмотра ----------
@@ -364,6 +384,36 @@ function buildGolden() {
 }
 KNIFE_BUILDERS.golden = buildGolden;
 
+// ---------- скины ножей: чеснок, чили, золото ----------
+const KPART = new Map([
+  [KM.blade, 'blade'], [KM.chili, 'blade'], [KM.gold, 'blade'],
+  [WM.wood, 'handle'], [KM.ebony, 'handle'], [KM.pod, 'handle'], [KM.stem, 'handle'],
+  [WM.brass, 'accent'], [KM.pea, 'accent'], [KM.emerald, 'accent'], [WM.steel, 'accent'],
+]);
+const kstd = o => new THREE.MeshStandardMaterial(o);
+const KNIFE_FIN_MATS = {
+  garlic: {
+    blade:  kstd({ color: 0xf2f0e4, metalness: .95, roughness: .12, envMap, envMapIntensity: 1.3 }),
+    handle: kstd({ color: 0xece3d2, roughness: .45, envMap, envMapIntensity: .4 }),
+    accent: kstd({ color: 0xb49ad6, roughness: .35, metalness: .4, envMap, envMapIntensity: .8 }),
+  },
+  chili: {
+    blade:  kstd({ color: 0xe03318, metalness: .9, roughness: .18, emissive: 0x4a0a02, emissiveIntensity: .45, envMap, envMapIntensity: 1.2 }),
+    handle: kstd({ color: 0x24501a, roughness: .45, envMap, envMapIntensity: .4 }),
+    accent: kstd({ color: 0xffa32a, metalness: .6, roughness: .3, envMap, envMapIntensity: .9 }),
+  },
+  gold: { blade: KM.gold, handle: KM.ebony, accent: KM.gold },
+};
+function applyKnifeFinish(root, id) {
+  const set = KNIFE_FIN_MATS[id]; if (!set) return;
+  root.traverse(o => {
+    if (!o.isMesh || Array.isArray(o.material)) return;
+    const part = KPART.get(o.material);
+    if (part && set[part]) o.material = set[part];
+  });
+}
+
+
 
 const WEAPON_BUILDERS = { knife: skin => (KNIFE_BUILDERS[skin] || buildChef)(), rifle: buildRifle, shotgun: buildShotgun, sniper: buildSniper, smg: buildSMG, rocket: buildRocket, pistol: buildPistol };
 
@@ -387,9 +437,10 @@ function makeFlash(size) {
 }
 
 // собрать оружие целиком: модель + вспышка + огуречные руки
-function buildWeapon(kind, handMat, withArms, skin) {
+function buildWeapon(kind, handMat, withArms, skin, finish) {
   const w = WEAPON_BUILDERS[kind](skin);
   if (kind !== 'knife' && skin && typeof applyGunSkin === 'function') applyGunSkin(w.g, skin); // скин оружия
+  if (kind === 'knife' && finish && finish !== 'base') applyKnifeFinish(w.g, finish);
   const hand = (u, v, sx) => { const h = mk(new THREE.SphereGeometry(1, 16, 12), handMat, sx, v, -u); h.scale.set(.034, .045, .05); return h; };
   w.g.add(hand(w.grip[0], w.grip[1], .02));
   if (!w.oneHand) w.g.add(hand(w.fore[0], w.fore[1], -.01));
