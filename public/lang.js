@@ -104,7 +104,10 @@ const DICT_EN = {
   'Обнулить цель': 'Zero out target', 'Дать свежесть': 'Give freshness', 'Сколько свежести выдавать': 'How much freshness to give',
   'Наведись на огурца и жми: соперника обнуляет, своему (или себе, если никто не в прицеле) ставит указанное здоровье. В онлайне чужое здоровье меняется только с правами от сервера.':
     'Aim at a cucumber and press: an enemy gets zeroed out, a teammate (or you, if nobody is targeted) gets the health you set. Online, changing other players’ health needs rights from the server.',
-  'Права админа подтверждены сервером': 'Admin rights confirmed by the server', 'Наведись на соперника': 'Aim at an enemy',
+  'Права админа подтверждены сервером': 'Admin rights confirmed by the server',
+  'Проверяем…': 'Checking…', 'Введи пароль.': 'Enter the password.',
+  'Сервер недоступен — попробуй ещё раз.': 'Server unavailable — try again.',
+  'На сервере не задан ADMIN_PASS — панель выключена': 'ADMIN_PASS is not set on the server — the panel is off', 'Наведись на соперника': 'Aim at an enemy',
   // ---------- HUD и бой ----------
   'свежесть': 'freshness', 'Банки': 'Jars', 'Пауза': 'Paused', 'Кликни, чтобы вернуться на грядку': 'Click to get back to the garden',
   'Кликни мимо этого окна, чтобы вернуться в бой': 'Click outside this box to get back to the fight',

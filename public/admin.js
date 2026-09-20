@@ -1,9 +1,7 @@
 // ================= Огуречные Шокеры — служебная панель (читы для админа) =================
-// Пароль по умолчанию: imgay
-// Здесь лежит только SHA-256 пароля: в коде страницы его не видно, но это всё же браузер —
-// защита от случайного любопытного, а не от взломщика. Настоящая проверка живёт на сервере:
-// изменить чужое здоровье в онлайне разрешает только он (ADMIN_PASS в server.js).
-const ADMIN_HASH = 'e46304cf15868d21befe8421d06f34c89dfde360bafc5689e0aa8320df681b89';
+// Пароля здесь нет вообще: на сайте его проверяет сервер (переменная ADMIN_PASS), а браузер
+// только отправляет введённое и ждёт ответа. Поэтому из кода страницы пароль не вытащить.
+const ADMIN_HASH = '';   // локальная проверка — только для версии без сервера
 const ADMIN = { on: false, wall: false, aim: false, god: false, hp: 500, server: false };
 
 async function sha256hex(s) {
@@ -12,18 +10,31 @@ async function sha256hex(s) {
 }
 async function adminUnlock(pass) {
   const msg = document.getElementById('admMsg');
+  pass = String(pass || '').trim();                       // лишние пробелы при вводе не мешают
+  if (!pass) { if (msg) msg.textContent = 'Введи пароль.'; return; }
+  // на сайте пароль проверяет сервер — в браузере его нет
+  if (typeof netSend === 'function' && typeof netConnect === 'function' && /^https?:$/.test(location.protocol)) {
+    if (msg) msg.textContent = 'Проверяем…';
+    netConnect().then(() => netSend({ t: 'admin', pass }))
+      .catch(() => { if (msg) msg.textContent = 'Сервер недоступен — попробуй ещё раз.'; });
+    return;
+  }
+  // игра без сервера: сверяем отпечаток пароля прямо здесь
   let ok = false;
-  try { ok = (await sha256hex(pass)) === ADMIN_HASH; } catch (e) { ok = false; }
-  if (!ok) { if (msg) msg.textContent = 'Пароль не подошёл.'; return; }
+  try { ok = !!ADMIN_HASH && (await sha256hex(pass)) === ADMIN_HASH; } catch (e) { ok = false; }
+  if (!ok) return adminFail('Пароль не подошёл.');
+  adminGrant();
+}
+// права выданы: открываем панель
+function adminGrant() {
   ADMIN.on = true;
   document.getElementById('admBox').hidden = false;
   document.getElementById('admLogin').hidden = true;
-  if (msg) msg.textContent = '';
-  // в онлайне права выдаёт сервер — без этого чужое здоровье менять нельзя
-  if (typeof netSend === 'function' && typeof netConnect === 'function' && /^https?:$/.test(location.protocol)) {
-    netConnect().then(() => netSend({ t: 'admin', pass })).catch(() => {});
-  }
+  const msg = document.getElementById('admMsg'); if (msg) msg.textContent = '';
   adminHud();
+}
+function adminFail(text) {
+  const msg = document.getElementById('admMsg'); if (msg) msg.textContent = text || 'Пароль не подошёл.';
 }
 function adminSet(key, val) { ADMIN[key] = val; adminHud(); if (key === 'wall') adminWallClear(); }
 

@@ -120,7 +120,8 @@ function onServer(m) {
     }
     case 'list': renderRooms(m.rooms); break;
     case 'error': netMsg(m.msg); break;
-    case 'adminok': if (typeof ADMIN === 'object') { ADMIN.server = true; if (typeof adminFlash === 'function') adminFlash('Права админа подтверждены сервером'); } break;
+    case 'adminok': if (typeof ADMIN === 'object') { ADMIN.server = true; if (typeof adminGrant === 'function') adminGrant(); if (typeof adminFlash === 'function') adminFlash('Права админа подтверждены сервером'); } break;
+    case 'adminfail': if (typeof adminFail === 'function') adminFail(m.msg); break;
     case 'closed': leaveOnline(m.reason); break;
     case 'left': {
       const e = entById(m.id);

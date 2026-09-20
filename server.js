@@ -8,7 +8,7 @@ const os = require('os');
 const { WebSocketServer } = require('ws');
 
 const PORT = +process.env.PORT || 3000;
-const ADMIN_PASS = process.env.ADMIN_PASS || 'imgay';   // на Render задаётся в Environment
+const ADMIN_PASS = (process.env.ADMIN_PASS || '').trim();   // задаётся на Render в разделе Environment; в коде пароля нет
 const MAX_PLAYERS = 10;
 const PUBLIC = path.join(__dirname, 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.ico': 'image/x-icon' };
@@ -145,8 +145,9 @@ wss.on('connection', ws => {
         break;
       }
       case 'list': send(ws, { t: 'list', rooms: roomList() }); break;
-      case 'admin': {                                   // права админа: только по паролю сервера
-        if (String(m.pass || '') !== ADMIN_PASS) return send(ws, { t: 'error', msg: 'Пароль админа не подошёл' });
+      case 'admin': {                                   // права админа: пароль знает только сервер
+        if (!ADMIN_PASS) return send(ws, { t: 'adminfail', msg: 'На сервере не задан ADMIN_PASS — панель выключена' });
+        if (String(m.pass || '').trim() !== ADMIN_PASS) return send(ws, { t: 'adminfail', msg: 'Пароль не подошёл.' });
         ws.admin = true; send(ws, { t: 'adminok' });
         console.log(`Игрок ${ws.pid} получил права админа`);
         break;
