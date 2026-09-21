@@ -153,7 +153,7 @@ function renderLobby() {
   const s = Object.assign({ map: 'garden', mode: 'tdm', diff: 1, bots: 0 }, L.settings);
   $('lobbyCode').textContent = L.code;
   $('pcount').textContent = `${L.players.length} / ${L.max}`;
-  const teamMode = !!(MODES[s.mode] && MODES[s.mode].teams);
+  const teamMode = !!(MODES[s.mode] && MODES[s.mode].teams && !MODES[s.mode].coop);
   const ul = $('plist'); ul.textContent = '';
   for (const p of L.players) {
     const li = document.createElement('li');
@@ -209,8 +209,10 @@ $('startMatch').addEventListener('click', () => hostStart());
 // ---------- старт матча ----------
 function hostStart(over) {
   const s = over || lobbySettings(), team = !!(MODES[s.mode] && MODES[s.mode].teams);
-  const roster = NET.lobby.players.map(p => ({ id: p.id, name: p.name, team: team ? p.team : null }));
-  for (let i = 0; i < s.bots; i++) {
+  const horde = s.mode === 'horde';
+  const roster = NET.lobby.players.map(p => ({ id: p.id, name: p.name, team: horde ? 0 : team ? p.team : null }));
+  if (horde) for (let i = 0; i < HORDE_POOL; i++) roster.push({ id: 'h' + i, name: hordeName(i), team: 1, bot: true, i });
+  for (let i = 0; i < (horde ? 0 : s.bots); i++) {
     let t = null;
     if (team) { const c0 = roster.filter(r => r.team === 0).length, c1 = roster.filter(r => r.team === 1).length; t = c0 <= c1 ? 0 : 1; }
     roster.push({ id: 'b' + i, name: BOT_NAMES[i % BOT_NAMES.length], team: t, bot: true, i });
@@ -241,7 +243,8 @@ function startOnline(d) {
     if (r.k != null) { e.kills = r.k; e.deaths = r.dd; }
   });
   if (d.ts) { teamScore[0] = d.ts[0]; teamScore[1] = d.ts[1]; }
-  if (NET.isHost) ents.forEach(e => { if (e.kind === 'bot') spawn(e); });
+  if (mode === 'horde') { if (NET.isHost) hordeStart(); else Object.assign(HORDE, { st: 'break', wave: 0, t: HORDE_FIRST, boss: null }); }
+  else if (NET.isHost) ents.forEach(e => { if (e.kind === 'bot') spawn(e); });
   spawn(player); buildViewmodel();
   running = true; gameOver = false; paused = true; now = 0;
   ents.forEach(e => e.lastHurt = -10);
@@ -252,11 +255,11 @@ function startOnline(d) {
 }
 // игрок зашёл во время матча
 function hostAddLate(m) {
-  const team = isTeamMode() ? m.team : null;
+  const team = mode === 'horde' ? 0 : isTeamMode() ? m.team : null;
   const e = makeEnt(m.name, false, ents.length, team); e.id = m.id; e.kind = 'remote';
   e.alive = false; e.mesh.visible = e.tag.visible = false;
   const roster = ents.map((x, idx) => ({
-    id: x.id, name: x.name, team: x.team, bot: x.kind === 'bot', i: x.kind === 'bot' ? +x.id.slice(1) : idx,
+    id: x.id, name: x.name, team: x.team, bot: x.kind === 'bot', i: x.kind === 'bot' ? (+x.id.slice(1) || 0) : idx,
     alive: x.alive, p: [r2(x.pos.x), r2(x.pos.y), r2(x.pos.z)], k: x.kills, dd: x.deaths,
   }));
   relay({ k: 'start', map: currentMap, mode, diff: difficulty, roster, ts: teamScore.slice() }, m.id);
@@ -345,6 +348,7 @@ function onGame(from, d, isAdmin) {
       break;
     }
     case 'pick': remotePick(d.id, from); break;
+    case 'horde': if (!NET.isHost) hordeApply(d); break;
     case 'swing': { const e = entById(d.id); if (e && !e.isPlayer) { e.gunKick = d.h ? 1.6 : 1.2; whoosh(Math.max(0, 1 - e.pos.distanceTo(player.pos) / 30)); } break; }
     case 'rocket': {
       const e = entById(d.id); if (!e || e.isPlayer) return;

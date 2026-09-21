@@ -142,13 +142,13 @@ function fire(e, extraSpread) {
     let t = rayWorld(o, d, w.range), hitEnt = null;
     for (const v of ents) {
       if (v === e || !v.alive || !isEnemy(e, v)) continue;
-      const tc = rayCyl(o, d, v.pos, RADIUS, HEIGHT);
+      const tc = rayCyl(o, d, v.pos, RADIUS * (v.scale || 1), HEIGHT * (v.scale || 1));
       if (tc < t) { t = tc; hitEnt = v; }
     }
     const hp = o.clone().addScaledVector(d, t);
     if (p < 3) { addTracer(muzzle, hp); pts.push([r2(hp.x), r2(hp.y), r2(hp.z)]); }
     if (hitEnt) {
-      const head = hp.y - hitEnt.pos.y > 1.3;
+      const head = hp.y - hitEnt.pos.y > 1.3 * (hitEnt.scale || 1);
       let dmg = w.dmg * (head ? w.head : 1);
       if (!e.isPlayer) dmg *= DIFF[difficulty].dmgMul;
       if (authority()) damage(hitEnt, dmg, e, head, d);
@@ -173,6 +173,7 @@ function startReload(e) {
 function damage(v, dmg, by, head, dir) {
   if (!v.alive) return;
   if (v.isPlayer && typeof ADMIN === 'object' && ADMIN.on && ADMIN.god) return;   // админская неуязвимость
+  if (by && by.dmgBoost) dmg *= by.dmgBoost;                                           // захватчики крепчают с каждой волной
   v.hp -= dmg; v.lastHurt = now;
   if (NET.inGame && v.kind === 'remote') relay({ k: 'hp', hp: Math.max(0, Math.round(v.hp)) }, v.id);
   if (v.isPlayer) { hurtFlash = Math.min(1, hurtFlash + dmg / 45); }
@@ -183,6 +184,7 @@ function damage(v, dmg, by, head, dir) {
 function kill(v, by, head, dir, fromNet) {
   if (NET.inGame && NET.isHost && !fromNet) relay({ k: 'kill', v: v.id, by: by ? by.id : null, h: head, dx: r2(dir.x), dz: r2(dir.z) });
   v.alive = false; v.hp = 0; v.deaths++; v.respawn = v.isPlayer ? 5 : 3; v.streak = 0; // игроку — время выбрать оружие
+  if (mode === 'horde') { if (v.kind === 'bot') v.respawn = Infinity; if (v.boss) { v.boss = false; hordeBossDown(); } }
   if (v.mesh) { v.mesh.visible = false; v.tag.visible = false; }
   sliceCucumber(v.pos, v.hue, dir);
   spawnDrop(v); dropSeed(v, by); gunGameKill(by, v);
@@ -325,7 +327,7 @@ function updateBot(e, dt) {
       if (ai.goal && ai.stuck > 1.5) ai.avoid = ai.goal; // застрял по пути — этот ящик пока не трогаем
       ai.goal = null;
       const holdOk = point.owner === e.team && point.inZone[e.team] >= 2;
-      ai.wp = mode === 'koth' && (!holdOk || Math.random() < .5) && Math.random() < .85 ? zoneWaypoint() : spawnPoint();
+      ai.wp = mode === 'horde' ? hordeWaypoint(e) : mode === 'koth' && (!holdOk || Math.random() < .5) && Math.random() < .85 ? zoneWaypoint() : spawnPoint();
       ai.stuck = 0;
     }
     const to = ai.wp.clone().sub(e.pos); to.y = 0; to.normalize();
@@ -337,7 +339,7 @@ function updateBot(e, dt) {
   if (e.reloading <= 0 && !t && e.ammo[e.weapon] < WEAPONS[e.weapon].mag * .5) startReload(e);
   if (wish.lengthSq() > 0) wish.normalize();
   ai.blocked = false;
-  moveEnt(e, wish, speed, dt, jump);
+  moveEnt(e, wish, speed * (e.speedMul || 1), dt, jump);
   if (ai.blocked) { ai.stuck += dt; if (e.onGround && Math.random() < .08) e.vel.y = 8.8; }
   drawEnt(e, dt);
 }
@@ -352,7 +354,7 @@ function drawEnt(e, dt) {
   e.flashT = Math.max(0, (e.flashT || 0) - dt);
   const fl = e.mesh.userData.flash; fl.visible = e.flashT > 0; if (fl.visible) fl.rotation.z = Math.random() * 6.3;
   const mk = e.mesh.userData.marker; if (mk) { mk.rotation.y += dt * 3; mk.position.y = 3.05 + Math.sin(now * 3) * .08; }
-  e.tag.position.set(e.pos.x, e.pos.y + 2.55, e.pos.z);
+  e.tag.position.set(e.pos.x, e.pos.y + 2.55 * (e.scale || 1), e.pos.z);
 }
 
 // ---------- игрок: ввод ----------
@@ -578,7 +580,7 @@ function frame(t) {
       ents.forEach(e => updateTimers(e, sim));
       updatePlayer(sim);
       ents.forEach(e => { if (e.isPlayer || !e.alive) return; if (e.kind === 'bot' && authority()) updateBot(e, sim); else updateRemote(e, sim); });
-      updateJars(sim); updateBooms(sim); updatePoint(sim); updatePickups(sim); updateRockets(sim); updateKnife(sim);
+      updateJars(sim); updateBooms(sim); updatePoint(sim); if (typeof hordeTick === 'function') hordeTick(sim); updatePickups(sim); updateRockets(sim); updateKnife(sim);
     }
     updateDebris(sim); updateTracers(sim);
     updateHUD(dt);
@@ -647,6 +649,7 @@ function setupMatch() {
   ents.length = 0;
   player = null;
   player = makeEnt(($('nick').value.trim() || 'Огурчик').slice(0, 16), true, 7, isTeamMode() ? 0 : null);
+  if (mode === 'horde') { for (let i = 0; i < HORDE_POOL; i++) { const b = makeEnt(hordeName(i), false, i, 1); b.id = 'h' + i; } hordeStart(); return; }
   BOT_NAMES.slice(0, 7).forEach((n, i) => spawn(makeEnt(n, false, i, isTeamMode() ? (i % 2 ? 0 : 1) : null)));
 }
 function endGame(winner) {

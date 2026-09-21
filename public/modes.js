@@ -139,6 +139,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 function teamName(t, me) { return `<span class="tname" style="color:${TEAMS[t].css}">${TEAMS[t].name}${me ? ' · ты' : ''}</span>`; }
 function scoreHTML() {
   const M = MODES[mode];
+  if (mode === 'horde') return hordeScoreHTML();
   if (mode === 'gungame') {
     const lv = Math.min(player.level || 0, LADDER.length - 1), lead = ents.reduce((a, b) => (b.level || 0) > (a.level || 0) ? b : a);
     return `<span class="tag">ступень</span> <b>${(player.level || 0) + 1}</b> <span class="tag">/ ${LADDER.length} · ${esc(WEAPONS[LADDER[lv]].name)} · лидер</span> ${esc(lead.name)} (${(lead.level || 0) + 1})`;

@@ -149,14 +149,16 @@ addEventListener('DOMContentLoaded', () => {
 function updateRespawnUI() {
   const btn = document.getElementById('respawnBtn'), info = document.getElementById('respawnInfo'); if (!btn) return;
   const left = Math.ceil(Math.max(0, player.respawn));
-  btn.disabled = left > 0;
-  btn.textContent = left > 0 ? `Играть через ${left}` : 'Играть';
+  const waitWave = mode === 'horde' && typeof HORDE === 'object' && HORDE.st === 'wave';
+  btn.disabled = left > 0 || waitWave;
+  btn.textContent = waitWave ? 'Жди передышки между волнами' : left > 0 ? `Играть через ${left}` : 'Играть';
   const forced = modeWeaponFor(player);
   document.getElementById('loadoutCards').hidden = !!forced;
   info.textContent = forced ? `В этом режиме оружие выдаётся само: ${WEAPONS[forced].name}` : 'Выбери оружие на следующую жизнь — клик или клавиши 1–6';
 }
 function respawnPlayer() {
   if (!running || gameOver || !player || player.alive || player.respawn > 0) return;
+  if (mode === 'horde' && typeof HORDE === 'object' && HORDE.st === 'wave') return;
   spawn(player); hideCenter();
   document.getElementById('loadout').hidden = true;
   lockPointer();

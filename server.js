@@ -37,12 +37,13 @@ const PUBLIC_ROOMS = [
   { code: 'PUB03', name: 'Битва за банку', mode: 'koth', maps: ['greenhouse', 'garden', 'factory', 'kitchen'] },
   { code: 'PUB04', name: 'Гонка вооружений', mode: 'gungame', maps: ['factory', 'garden', 'kitchen', 'greenhouse'] },
   { code: 'PUB05', name: 'Сбор семечек', mode: 'seeds', maps: ['garden', 'greenhouse', 'kitchen', 'factory'] },
+  { code: 'PUB06', name: 'Нашествие', mode: 'horde', maps: ['factory', 'garden', 'kitchen', 'greenhouse'] },
 ];
 for (const r of PUBLIC_ROOMS) lobbies.set(r.code, {
   code: r.code, name: r.name, public: true, host: null, players: new Map(), inGame: false, curMap: r.maps[0],
   settings: { mode: r.mode, maps: r.maps, diff: 1, fill: 6 },
 });
-const MODES_OK = ['ffa', 'tdm', 'koth', 'gungame', 'seeds', 'knives'], MAPS_OK = ['garden', 'kitchen', 'greenhouse', 'factory'];
+const MODES_OK = ['ffa', 'tdm', 'koth', 'gungame', 'seeds', 'knives', 'horde'], MAPS_OK = ['garden', 'kitchen', 'greenhouse', 'factory'];
 const MAX_CUSTOM = 20;
 // сначала встроенные серверы, потом созданные игроками
 function roomList() {

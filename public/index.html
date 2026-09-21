@@ -158,6 +158,12 @@
   #caseActions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
   @media (prefers-reduced-motion:reduce){#caseReel{transition:none!important}}
 
+
+  /* ---------- полоска босса ---------- */
+  #bossBar{position:absolute;left:50%;top:calc(96px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(460px,80vw);text-align:center;font:800 13px "Rubik";letter-spacing:.14em;text-transform:uppercase;color:#ff9a7a;text-shadow:0 2px 3px #000}
+  #bossBar div{height:12px;margin-top:4px;border-radius:999px;background:rgba(10,4,2,.75);border:2px solid #ff5236;overflow:hidden}
+  #bossBar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff5236,#ffb020);transition:width .2s}
+
   /* ---------- HUD ---------- */
   #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
   #cross{position:absolute;left:50%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%)}
@@ -315,6 +321,7 @@
     <button type="button" id="respawnBtn" disabled>Играть</button>
     <div class="pbHint">Enter или пробел — тоже «Играть»</div>
   </div>
+  <div id="bossBar" hidden>Огурец-мутант<div><i></i></div></div>
   <div id="admHud" hidden></div>
   <div id="admFlash" hidden></div>
   <div id="pauseHint">Esc — пауза · Tab — счёт</div>
@@ -372,6 +379,7 @@
           <button type="button" data-m="gungame" aria-pressed="false">Гонка вооружений</button>
           <button type="button" data-m="seeds" aria-pressed="false">Сбор семечек</button>
           <button type="button" data-m="knives" aria-pressed="false">Ножевой бой</button>
+          <button type="button" data-m="horde" aria-pressed="false">Нашествие</button>
         </div>
         <p class="note" id="modeHint">Все против всех. Первый, кто нарежет 20 огурцов, забирает грядку.</p>
       </div>
@@ -408,7 +416,7 @@
         <span class="lbl">Создать свой публичный сервер</span>
         <div class="srvForm">
           <input type="text" id="srvName" maxlength="24" placeholder="Название сервера" autocomplete="off" aria-label="Название сервера">
-          <label class="srvSel" for="srvMode">Режим<select id="srvMode"><option value="ffa">Каждый сам за себя</option><option value="tdm">Командный бой</option><option value="koth">Захват точки</option><option value="gungame">Гонка вооружений</option><option value="seeds">Сбор семечек</option><option value="knives">Ножевой бой</option></select></label>
+          <label class="srvSel" for="srvMode">Режим<select id="srvMode"><option value="ffa">Каждый сам за себя</option><option value="tdm">Командный бой</option><option value="koth">Захват точки</option><option value="gungame">Гонка вооружений</option><option value="seeds">Сбор семечек</option><option value="knives">Ножевой бой</option><option value="horde">Нашествие</option></select></label>
           <label class="srvSel" for="srvMap">Первая карта<select id="srvMap"><option value="garden">Грядка №7</option><option value="kitchen">Кухня</option><option value="greenhouse">Теплица</option><option value="factory">Засолочный цех</option></select></label>
           <button type="button" class="ghost" id="createServer">Создать сервер</button>
         </div>
@@ -586,7 +594,7 @@
     </div>
     <div class="lset">
       <label for="lMap">Карта<select id="lMap"><option value="garden">Грядка №7</option><option value="kitchen">Кухня</option><option value="greenhouse">Теплица</option><option value="factory">Засолочный цех</option></select></label>
-      <label for="lMode">Режим<select id="lMode"><option value="ffa">Каждый сам за себя</option><option value="tdm">Командный бой</option><option value="koth">Захват точки</option><option value="gungame">Гонка вооружений</option><option value="seeds">Сбор семечек</option><option value="knives">Ножевой бой</option></select></label>
+      <label for="lMode">Режим<select id="lMode"><option value="ffa">Каждый сам за себя</option><option value="tdm">Командный бой</option><option value="koth">Захват точки</option><option value="gungame">Гонка вооружений</option><option value="seeds">Сбор семечек</option><option value="knives">Ножевой бой</option><option value="horde">Нашествие</option></select></label>
       <label for="lDiff">Боты<select id="lDiff"><option value="0">Малосольные</option><option value="1">Хрустящие</option><option value="2">Маринованные</option></select></label>
       <label for="lBots">Число ботов<select id="lBots"><option value="0">Без ботов</option><option value="2">2</option><option value="4">4</option><option value="6">6</option><option value="8">8</option></select></label>
     </div>
@@ -604,6 +612,7 @@
 <script src="mapextras.js"></script>
 <script src="mapfx.js"></script>
 <script src="modes.js"></script>
+<script src="horde.js"></script>
 <script src="pickups.js"></script>
 <script src="knife.js"></script>
 <script src="chars.js"></script>
