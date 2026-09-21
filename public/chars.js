@@ -96,7 +96,7 @@ const CHAR_BUILD = {
 
 // ---------- прогресс и выбор ----------
 let charSkin = 'classic';
-const charOpen = id => CHAR_SKINS[id] && (typeof totalKills !== 'number' || totalKills >= CHAR_SKINS[id].need);
+const charOpen = id => CHAR_SKINS[id] && (CHAR_SKINS[id].case ? (typeof caseOwns === 'function' && caseOwns('char', id)) : (typeof totalKills !== 'number' || totalKills >= CHAR_SKINS[id].need));
 try { const c = localStorage.getItem('ogurcy-char'); if (CHAR_SKINS[c]) charSkin = c; } catch (e) {}
 function setCharSkin(id) {
   if (!CHAR_SKINS[id] || !charOpen(id)) return;
@@ -124,10 +124,11 @@ function renderCharPick() {
   for (const [id, sk] of Object.entries(CHAR_SKINS)) {
     const b = document.createElement('button'); b.type = 'button';
     const open = charOpen(id);
-    b.textContent = open ? `${sk.icon} ${sk.name}` : `🔒 ${sk.name} · ${sk.need}`;
+    b.textContent = open ? `${sk.icon} ${sk.name}` : sk.case ? `🎁 ${sk.name}` : `🔒 ${sk.name} · ${sk.need}`;
+    if (sk.case && typeof RARITY === 'object') b.style.borderColor = RARITY[sk.rarity].color;
     b.disabled = !open; b.classList.toggle('locked', !open);
     b.setAttribute('aria-pressed', String(id === charSkin));
-    b.title = open ? sk.hint : `Откроется, когда нарежешь ${sk.need} огурцов`;
+    b.title = open ? sk.hint : sk.case ? 'Выпадает из кейса' : `Откроется, когда нарежешь ${sk.need} огурцов`;
     b.addEventListener('click', () => setCharSkin(id));
     box.append(b);
   }

@@ -51,7 +51,7 @@ function applyGunSkin(root, id) {
 let gunKills = {}, gunSkins = {};
 try { gunKills = JSON.parse(localStorage.getItem('ogurcy-gunkills') || '{}') || {}; } catch (e) {}
 try { gunSkins = JSON.parse(localStorage.getItem('ogurcy-gunskins') || '{}') || {}; } catch (e) {}
-const gunSkinOpen = (k, s) => (gunKills[k] || 0) >= GUN_SKINS[s].need;
+const gunSkinOpen = (k, s) => GUN_SKINS[s].case ? (typeof caseOwns === 'function' && caseOwns('gun', k + ':' + s)) : (gunKills[k] || 0) >= GUN_SKINS[s].need;
 const gunSkinOf = k => (gunSkins[k] && GUN_SKINS[gunSkins[k]] && gunSkinOpen(k, gunSkins[k])) ? gunSkins[k] : 'base';
 function saveGunProgress() {
   try { localStorage.setItem('ogurcy-gunkills', JSON.stringify(gunKills)); localStorage.setItem('ogurcy-gunskins', JSON.stringify(gunSkins)); } catch (e) {}
@@ -99,7 +99,8 @@ function renderGunSkins() {
     for (const [id, sk] of Object.entries(GUN_SKINS)) {
       const b = document.createElement('button'); b.type = 'button';
       const open = gunSkinOpen(k, id);
-      b.textContent = open ? (sk.icon ? sk.icon + ' ' : '') + sk.name : `🔒 ${sk.name} · ${sk.need}`;
+      b.textContent = open ? (sk.icon ? sk.icon + ' ' : '') + sk.name : sk.case ? `🎁 ${sk.name}` : `🔒 ${sk.name} · ${sk.need}`;
+      if (sk.case) { b.style.borderColor = RARITY[sk.rarity].color; if (!open) b.title = 'Выпадает из кейса'; }
       b.disabled = !open; b.classList.toggle('locked', !open);
       b.setAttribute('aria-pressed', String(gunSkinOf(k) === id));
       b.addEventListener('click', () => setGunSkin(k, id));

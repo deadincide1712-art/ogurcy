@@ -189,7 +189,7 @@ function kill(v, by, head, dir, fromNet) {
   sfx('chop', v.isPlayer ? 1 : Math.max(.15, 1 - v.pos.distanceTo(player.pos) / 60));
   if (by && by !== v) {
     by.kills++; by.streak++;
-    if (by.isPlayer) { showStreak(by.streak, head); recordKill(by.weapon); recordGunKill(by.weapon); }
+    if (by.isPlayer) { showStreak(by.streak, head); recordKill(by.weapon); recordGunKill(by.weapon); if (typeof caseOnKill === 'function') caseOnKill(by, head); }
   }
   feed(by, v, head);
   if (v.isPlayer) {
@@ -655,6 +655,7 @@ function endGame(winner) {
   if (document.exitPointerLock) document.exitPointerLock();
   renderBoard();
   $('board').style.display = 'block';
+  if (typeof caseOnMatchEnd === 'function') caseOnMatchEnd(!!winner.isPlayer);
   showCenter(winner.isPlayer ? 'Грядка твоя!' : `Победил ${winner.name}`, winner.isPlayer ? `Ты нарезал ${MODES.ffa.goal} огурцов` : `Ты нарезал ${player.kills} · жми «Реванш» для новой попытки`);
   finishMatch();
 }
@@ -665,6 +666,7 @@ function endGameTeam(t) {
   renderBoard();
   $('board').style.display = 'block';
   const win = t === player.team;
+  if (typeof caseOnMatchEnd === 'function') caseOnMatchEnd(win);
   showCenter(win ? 'Победа!' : 'Поражение', `${TEAMS[t].name} забирает грядку · счёт ${Math.floor(teamScore[0])} : ${Math.floor(teamScore[1])}`);
   finishMatch();
 }

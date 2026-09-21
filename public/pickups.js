@@ -143,6 +143,7 @@ function takePickup(pk, e) {
   if (e) {
     const got = lootText(e, pk.type);
     if (!e.isPlayer) return;
+    if (typeof caseOnLoot === 'function') caseOnLoot();
     if (got.length) announce(got.join(' · '), pk.type === 'rocket' ? '#ff9a7a' : '#ffe27a');
     pickupSound();
   }
