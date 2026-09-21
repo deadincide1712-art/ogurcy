@@ -31,6 +31,7 @@ function adminGrant() {
   document.getElementById('admBox').hidden = false;
   document.getElementById('admLogin').hidden = true;
   const msg = document.getElementById('admMsg'); if (msg) msg.textContent = '';
+  adminFillSkins();
   adminHud();
 }
 function adminFail(text) {
@@ -168,4 +169,64 @@ addEventListener('DOMContentLoaded', () => {
   const kb = document.getElementById('admKill'), hb = document.getElementById('admHeal');
   if (kb) kb.addEventListener('click', adminKill);
   if (hb) hb.addEventListener('click', adminHeal);
+});
+
+// ---------- выдача скинов ----------
+// выданное админом хранится отдельно и открывает скин в любых списках
+let ADMIN_SKINS = [];
+try { ADMIN_SKINS = JSON.parse(localStorage.getItem('ogurcy-admin-skins') || '[]') || []; } catch (e) {}
+function adminOwns(key) { return ADMIN_SKINS.includes(key); }
+function adminGive(key) {
+  if (!ADMIN_SKINS.includes(key)) ADMIN_SKINS.push(key);
+  if (key.startsWith('kfin:')) { const k = 'knife:' + key.split(':')[1]; if (!ADMIN_SKINS.includes(k)) ADMIN_SKINS.push(k); }  // скин ножа — вместе с самим ножом
+  try { localStorage.setItem('ogurcy-admin-skins', JSON.stringify(ADMIN_SKINS)); } catch (e) {}
+}
+// все скины игры одним списком: [ключ, подпись, группа]
+function adminSkinList() {
+  const out = [];
+  for (const [id, sk] of Object.entries(CHAR_SKINS)) out.push(['char:' + id, sk.name, 'Огурец']);
+  for (const g of GUNS) for (const [id, sk] of Object.entries(GUN_SKINS)) if (id !== 'base') out.push([`gun:${g}:${id}`, sk.name, WEAPONS[g].name]);
+  for (const [id, sk] of Object.entries(KNIFE_SKINS)) out.push(['knife:' + id, sk.name, 'Ножи']);
+  for (const k of Object.keys(KNIFE_SKINS)) for (const [id, f] of Object.entries(KNIFE_FINS)) if (id !== 'base') out.push([`kfin:${k}:${id}`, `${KNIFE_SKINS[k].name} · ${f.name}`, 'Скины ножей']);
+  return out;
+}
+function adminFillSkins() {
+  const sel = document.getElementById('admSkin'); if (!sel) return;
+  sel.textContent = '';
+  const groups = {};
+  for (const [key, name, grp] of adminSkinList()) {
+    if (!groups[grp]) { groups[grp] = document.createElement('optgroup'); groups[grp].label = grp; sel.append(groups[grp]); }
+    const o = document.createElement('option'); o.value = key; o.textContent = name; groups[grp].append(o);
+  }
+}
+// надеть выданный скин
+function adminEquip(key) {
+  const [kind, a, b] = key.split(':');
+  if (kind === 'char') setCharSkin(a);
+  else if (kind === 'gun') setGunSkin(a, b);
+  else if (kind === 'knife') setKnifeSkin(a);
+  else if (kind === 'kfin') { setKnifeSkin(a); setKnifeFin(a, b); }
+}
+function adminRefreshLists() {
+  ['renderCharPick', 'renderGunSkins', 'renderKnifePick', 'renderKnifeFins', 'renderCases'].forEach(f => { try { if (typeof window[f] === 'function') window[f](); } catch (e) {} });
+}
+function adminGiveSelected() {
+  if (!ADMIN.on) return;
+  const sel = document.getElementById('admSkin'); if (!sel || !sel.value) return;
+  adminGive(sel.value); adminRefreshLists(); adminEquip(sel.value); adminRefreshLists();
+  adminFlash('Скин выдан и надет: ' + sel.options[sel.selectedIndex].textContent);
+  const m = document.getElementById('admMsg'); if (m) m.textContent = 'Скин выдан и надет: ' + sel.options[sel.selectedIndex].textContent;
+}
+function adminGiveAll() {
+  if (!ADMIN.on) return;
+  for (const [key] of adminSkinList()) adminGive(key);
+  adminRefreshLists();
+  const m = document.getElementById('admMsg'); if (m) m.textContent = 'Выданы все скины — выбирай в разделах «Огурец», «Оружие» и «Ножи».';
+}
+addEventListener('DOMContentLoaded', () => {
+  const g = document.getElementById('admGive'), all = document.getElementById('admGiveAll');
+  if (g) g.addEventListener('click', adminGiveSelected);
+  if (all) all.addEventListener('click', adminGiveAll);
+  // нож, выданный админом, должен остаться в руках и после перезагрузки
+  try { const s = localStorage.getItem('ogurcy-knife'); if (s && adminOwns('knife:' + s) && typeof setKnifeSkin === 'function') setKnifeSkin(s); } catch (e) {}
 });

@@ -116,6 +116,7 @@
   .admRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .admRow input[type=password],.admRow input[type=number]{font:600 15px "Rubik";padding:9px 12px;border-radius:10px;border:2px solid var(--skin-dark);background:var(--brine);color:var(--flesh);max-width:170px}
   #admBox{display:grid;gap:8px;border:2px dashed var(--tomato);border-radius:14px;padding:10px 12px}
+  #admSkin{font:600 14px "Rubik";padding:9px 10px;border-radius:10px;border:2px solid var(--skin-dark);background:var(--brine);color:var(--flesh);max-width:100%;flex:1;min-width:180px}
   #admHud{position:absolute;left:50%;top:calc(52px + env(safe-area-inset-top,0px));transform:translateX(-50%);font:700 12px "Rubik";letter-spacing:.06em;color:#ffb4a3;background:rgba(40,10,6,.72);border:1px solid #ff5236;border-radius:999px;padding:4px 14px;white-space:nowrap}
   #admFlash{position:absolute;left:50%;top:calc(82px + env(safe-area-inset-top,0px));transform:translateX(-50%);font:700 15px "Rubik";color:#ffd24a;text-shadow:0 2px 4px #000}
 
@@ -535,6 +536,11 @@
             <button type="button" class="ghost" id="admKill">Обнулить цель <kbd>K</kbd></button>
             <button type="button" class="ghost" id="admHeal">Дать свежесть <kbd>H</kbd></button>
             <input type="number" id="admHp" min="1" max="9999" value="500" aria-label="Сколько свежести выдавать">
+          </div>
+          <div class="admRow">
+            <select id="admSkin" aria-label="Какой скин выдать"></select>
+            <button type="button" class="ghost" id="admGive">Выдать и надеть</button>
+            <button type="button" class="ghost" id="admGiveAll">Выдать все скины</button>
           </div>
           <p class="note">Наведись на огурца и жми: соперника обнуляет, своему (или себе, если никто не в прицеле) ставит указанное здоровье. В онлайне чужое здоровье меняется только с правами от сервера.</p>
         </div>

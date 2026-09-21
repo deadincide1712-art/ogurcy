@@ -96,7 +96,8 @@ const CHAR_BUILD = {
 
 // ---------- прогресс и выбор ----------
 let charSkin = 'classic';
-const charOpen = id => CHAR_SKINS[id] && (CHAR_SKINS[id].case ? (typeof caseOwns === 'function' && caseOwns('char', id)) : (typeof totalKills !== 'number' || totalKills >= CHAR_SKINS[id].need));
+const charOpen = id => !!CHAR_SKINS[id] && ((typeof adminOwns === 'function' && adminOwns('char:' + id))
+  || (CHAR_SKINS[id].case ? (typeof caseOwns === 'function' && caseOwns('char', id)) : (typeof totalKills !== 'number' || totalKills >= CHAR_SKINS[id].need)));
 try { const c = localStorage.getItem('ogurcy-char'); if (CHAR_SKINS[c]) charSkin = c; } catch (e) {}
 function setCharSkin(id) {
   if (!CHAR_SKINS[id] || !charOpen(id)) return;

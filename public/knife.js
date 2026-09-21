@@ -23,7 +23,7 @@ const KNIFE_FINS = {
 let knifeKills = {}, knifeFins = {};
 try { knifeKills = JSON.parse(localStorage.getItem('ogurcy-knifekills') || '{}') || {}; } catch (e) {}
 try { knifeFins = JSON.parse(localStorage.getItem('ogurcy-knifefins') || '{}') || {}; } catch (e) {}
-const knifeFinOpen = (k, f) => (knifeKills[k] || 0) >= KNIFE_FINS[f].need;
+const knifeFinOpen = (k, f) => (typeof adminOwns === 'function' && adminOwns('kfin:' + k + ':' + f)) || (knifeKills[k] || 0) >= KNIFE_FINS[f].need;
 const knifeFinOf = k => (knifeFins[k] && KNIFE_FINS[knifeFins[k]] && knifeFinOpen(k, knifeFins[k])) ? knifeFins[k] : 'base';
 function saveKnifeFins() {
   try { localStorage.setItem('ogurcy-knifekills', JSON.stringify(knifeKills)); localStorage.setItem('ogurcy-knifefins', JSON.stringify(knifeFins)); } catch (e) {}
@@ -71,7 +71,7 @@ function renderKnifeFins() {
 
 let totalKills = 0;
 try { totalKills = +(JSON.parse(localStorage.getItem('ogurcy-progress') || '{}').kills) || 0; } catch (e) {}
-const isUnlocked = s => KNIFE_SKINS[s] && totalKills >= KNIFE_SKINS[s].need;
+const isUnlocked = s => KNIFE_SKINS[s] && ((typeof adminOwns === 'function' && adminOwns('knife:' + s)) || totalKills >= KNIFE_SKINS[s].need);
 try { const s = localStorage.getItem('ogurcy-knife'); if (KNIFE_SKINS[s] && isUnlocked(s)) knifeSkin = s; } catch (e) {}
 function recordKill(weapon) {
   const before = totalKills;

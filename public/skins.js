@@ -51,7 +51,8 @@ function applyGunSkin(root, id) {
 let gunKills = {}, gunSkins = {};
 try { gunKills = JSON.parse(localStorage.getItem('ogurcy-gunkills') || '{}') || {}; } catch (e) {}
 try { gunSkins = JSON.parse(localStorage.getItem('ogurcy-gunskins') || '{}') || {}; } catch (e) {}
-const gunSkinOpen = (k, s) => GUN_SKINS[s].case ? (typeof caseOwns === 'function' && caseOwns('gun', k + ':' + s)) : (gunKills[k] || 0) >= GUN_SKINS[s].need;
+const gunSkinOpen = (k, s) => (typeof adminOwns === 'function' && adminOwns('gun:' + k + ':' + s))
+  || (GUN_SKINS[s].case ? (typeof caseOwns === 'function' && caseOwns('gun', k + ':' + s)) : (gunKills[k] || 0) >= GUN_SKINS[s].need);
 const gunSkinOf = k => (gunSkins[k] && GUN_SKINS[gunSkins[k]] && gunSkinOpen(k, gunSkins[k])) ? gunSkins[k] : 'base';
 function saveGunProgress() {
   try { localStorage.setItem('ogurcy-gunkills', JSON.stringify(gunKills)); localStorage.setItem('ogurcy-gunskins', JSON.stringify(gunSkins)); } catch (e) {}
