@@ -93,7 +93,11 @@ function netConnect() {
   const p = new Promise((res, rej) => {
     const ws = new WebSocket(wsUrl(curRegion().host));
     NET.ws = ws;
-    ws.onopen = () => { if (NET.connecting === p) NET.connecting = null; res(); };
+    ws.onopen = () => {
+      if (NET.connecting === p) NET.connecting = null;
+      if (typeof ADMIN === 'object' && ADMIN.pass) ws.send(JSON.stringify({ t: 'admin', pass: ADMIN.pass }));
+      res();
+    };
     ws.onerror = () => { if (NET.connecting === p) NET.connecting = null; rej(new Error('Не удалось подключиться к серверу')); };
     ws.onmessage = ev => { if (NET.ws !== ws) return; let m; try { m = JSON.parse(ev.data); } catch (e) { return; } onServer(m); };
     ws.onclose = () => { if (NET.ws !== ws) return; if (NET.lobby) leaveOnline('Соединение с сервером потеряно'); NET.ws = null; NET.connecting = null; };
@@ -275,7 +279,7 @@ function backToLobby() {
 // ---------- игровые сообщения ----------
 function onGame(from, d, isAdmin) {
   if (!d || !d.k) return;
-  if (d.k === 'adm') { if (isAdmin && NET.isHost && typeof adminApply === 'function') adminApply(d); return; }  // команда админа — только с правами от сервера
+  if (d.k === 'adm') { if (isAdmin && NET.isHost && typeof adminApply === 'function') adminApply(d, from); return; }  // команда админа — только с правами от сервера
   if (d.k === 'start') { if (!NET.isHost) startOnline(d); return; }
   if (!NET.inGame) return;
   switch (d.k) {

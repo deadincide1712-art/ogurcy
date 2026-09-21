@@ -2,7 +2,9 @@
 // Пароля здесь нет вообще: на сайте его проверяет сервер (переменная ADMIN_PASS), а браузер
 // только отправляет введённое и ждёт ответа. Поэтому из кода страницы пароль не вытащить.
 const ADMIN_HASH = '';   // локальная проверка — только для версии без сервера
-const ADMIN = { on: false, wall: false, aim: false, god: false, hp: 500, server: false };
+const ADMIN = { on: false, wall: false, aim: false, god: false, hp: 500, server: false, pass: '', godSync: 0 };
+// в онлайне здоровье всех игроков считает хост — поэтому лечение и неуязвимость идут через него
+const adminRemote = () => typeof NET === 'object' && NET.inGame && !NET.isHost;
 
 async function sha256hex(s) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -15,6 +17,7 @@ async function adminUnlock(pass) {
   // на сайте пароль проверяет сервер — в браузере его нет
   if (typeof netSend === 'function' && typeof netConnect === 'function' && /^https?:$/.test(location.protocol)) {
     if (msg) msg.textContent = 'Проверяем…';
+    ADMIN.pass = pass;
     netConnect().then(() => netSend({ t: 'admin', pass }))
       .catch(() => { if (msg) msg.textContent = 'Сервер недоступен — попробуй ещё раз.'; });
     return;
@@ -31,13 +34,21 @@ function adminGrant() {
   document.getElementById('admBox').hidden = false;
   document.getElementById('admLogin').hidden = true;
   const msg = document.getElementById('admMsg'); if (msg) msg.textContent = '';
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // курсор больше не стоит в поле пароля
   adminFillSkins();
   adminHud();
 }
 function adminFail(text) {
   const msg = document.getElementById('admMsg'); if (msg) msg.textContent = text || 'Пароль не подошёл.';
 }
-function adminSet(key, val) { ADMIN[key] = val; adminHud(); if (key === 'wall') adminWallClear(); }
+function adminSet(key, val) {
+  ADMIN[key] = val; adminHud();
+  if (key === 'wall') adminWallClear();
+  if (key === 'god') adminSyncGod();
+  const box = document.getElementById({ wall: 'admWall', aim: 'admAim', god: 'admGod' }[key]); if (box) box.checked = !!val;
+}
+// хосту сообщаем, что по нам урон не проходит
+function adminSyncGod() { ADMIN.godSync = 2; if (adminRemote()) relay({ k: 'adm', act: 'god', on: !!ADMIN.god }, 'host'); }
 
 // ---------- сквозь стены ----------
 function adminWallClear() {
@@ -113,15 +124,21 @@ function adminHeal() {
   if (!ADMIN.on || !player) return;
   const t = adminPickTarget(false) || player;
   const hp = Math.max(1, Math.min(9999, ADMIN.hp));
-  if (t === player) { player.hp = hp; adminFlash(`Себе ${hp} свежести`); return; }
+  if (t === player) {
+    player.hp = hp;
+    if (adminRemote()) relay({ k: 'adm', act: 'heal', id: player.id, hp }, 'host');
+    adminFlash(`Себе ${hp} свежести`); return;
+  }
   if (typeof authority === 'function' && authority()) { t.hp = hp; if (NET.inGame && t.kind === 'remote') relay({ k: 'hp', hp: Math.round(hp) }, t.id); }
   else relay({ k: 'adm', act: 'heal', id: t.id, hp }, 'host');
   adminFlash(`${t.name}: ${hp} свежести`);
 }
 // хост выполняет команду админа — сервер подтверждает права флагом adm
-function adminApply(d) {
+function adminApply(d, from) {
+  const by = from ? entById(from) : null;
+  if (d.act === 'god') { if (by) by.god = !!d.on; return; }
   const t = typeof entById === 'function' ? entById(d.id) : null; if (!t) return;
-  if (d.act === 'kill') damage(t, 9999, null, false, new THREE.Vector3());
+  if (d.act === 'kill') { if (t.god) t.god = false; damage(t, 9999, by, false, new THREE.Vector3()); }
   else if (d.act === 'heal') { t.hp = Math.max(1, Math.min(9999, d.hp || 100)); if (t.kind === 'remote') relay({ k: 'hp', hp: Math.round(t.hp) }, t.id); }
 }
 
@@ -131,12 +148,14 @@ function adminFlash(text) {
   el.textContent = text; el.hidden = false; admFlashT = 1.6;
 }
 function adminHud() {
+  const pb = document.getElementById('admPause'); if (pb) pb.hidden = !ADMIN.on;
   const el = document.getElementById('admHud'); if (!el) return;
   el.hidden = !ADMIN.on;
   if (!ADMIN.on) return;
   el.textContent = `АДМИН · стены ${ADMIN.wall ? 'вкл' : 'выкл'} [V] · аим ${ADMIN.aim ? 'вкл' : 'выкл'} [B] · неуязвимость ${ADMIN.god ? 'вкл' : 'выкл'} [N] · K — обнулить · H — вылечить`;
 }
 function adminTick(dt) {
+  if (ADMIN.on && ADMIN.god && adminRemote()) { ADMIN.godSync -= dt; if (ADMIN.godSync <= 0) adminSyncGod(); }
   adminWallUpdate();
   adminAim(dt);
   if (admFlashT > 0) { admFlashT -= dt; if (admFlashT <= 0) { const el = document.getElementById('admFlash'); if (el) el.hidden = true; } }
@@ -145,7 +164,7 @@ function adminTick(dt) {
 // ---------- горячие клавиши и меню ----------
 addEventListener('keydown', e => {
   if (!ADMIN.on || !running || e.repeat) return;
-  if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+  if (!locked && document.activeElement && document.activeElement.tagName === 'INPUT' && document.activeElement.offsetParent) return;
   const k = e.code;
   if (k === 'KeyV') { ADMIN.wall = !ADMIN.wall; adminSet('wall', ADMIN.wall); }
   else if (k === 'KeyB') adminSet('aim', !ADMIN.aim);
@@ -166,6 +185,9 @@ addEventListener('DOMContentLoaded', () => {
   }
   const hp = document.getElementById('admHp');
   if (hp) hp.addEventListener('input', () => { ADMIN.hp = +hp.value || 100; });
+  const kp = document.getElementById('admKillP'), hp2 = document.getElementById('admHealP');
+  if (kp) kp.addEventListener('click', adminKill);
+  if (hp2) hp2.addEventListener('click', adminHeal);
   const kb = document.getElementById('admKill'), hb = document.getElementById('admHeal');
   if (kb) kb.addEventListener('click', adminKill);
   if (hb) hb.addEventListener('click', adminHeal);

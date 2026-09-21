@@ -173,6 +173,7 @@ function startReload(e) {
 function damage(v, dmg, by, head, dir) {
   if (!v.alive) return;
   if (v.isPlayer && typeof ADMIN === 'object' && ADMIN.on && ADMIN.god) return;   // админская неуязвимость
+  if (v.god) return;                                                                   // неуязвимый админ по сети (права подтвердил сервер)
   if (by && by.dmgBoost) dmg *= by.dmgBoost;                                           // захватчики крепчают с каждой волной
   v.hp -= dmg; v.lastHurt = now;
   if (NET.inGame && v.kind === 'remote') relay({ k: 'hp', hp: Math.max(0, Math.round(v.hp)) }, v.id);
