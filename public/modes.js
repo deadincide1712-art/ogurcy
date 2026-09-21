@@ -130,7 +130,8 @@ function waveFlag(c) {
 
 function announce(text, color) {
   const s = $('streak'); s.textContent = text; s.style.color = color; s.style.opacity = 1; streakT = 2.2;
-  const d = document.createElement('div'); d.innerHTML = `<span style="color:${color}">${text}</span>`;
+  const d = document.createElement('div'), sp = document.createElement('span');
+  sp.style.color = color; sp.textContent = text; d.append(sp);   // имена игроков не превращаются в HTML
   $('feed').prepend(d); setTimeout(() => d.remove(), 6000);
 }
 

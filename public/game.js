@@ -497,14 +497,14 @@ function feed(by, v, head) {
   setTimeout(() => d.remove(), 6000);
 }
 function renderBoard() {
-  const row = e => `<tr class="${e.isPlayer ? 'me' : ''}"><td><span class="swatch" style="background:#${e.color.toString(16).padStart(6, '0')}"></span>${e.name.replace(/</g, '&lt;')}</td><td>${e.kills}</td><td>${e.deaths}</td></tr>`;
+  const row = e => `<tr class="${e.isPlayer ? 'me' : ''}"><td><span class="swatch" style="background:#${e.color.toString(16).padStart(6, '0')}"></span>${esc(e.name)}</td><td>${e.kills}</td><td>${e.deaths}</td></tr>`;
   const byKills = (a, b) => b.kills - a.kills || a.deaths - b.deaths;
   if (isTeamMode()) {
     $('boardBody').innerHTML = [0, 1].map(t => `<tr class="teamrow"><td colspan="3" style="color:${TEAMS[t].css}">${TEAMS[t].name} · ${Math.floor(teamScore[t])}</td></tr>` + ents.filter(e => e.team === t).sort(byKills).map(row).join('')).join('');
     return;
   }
   const rows = [...ents].sort(byKills);
-  $('boardBody').innerHTML = rows.map(e => `<tr class="${e.isPlayer ? 'me' : ''}"><td><span class="swatch" style="background:#${e.color.toString(16).padStart(6, '0')}"></span>${e.name.replace(/</g, '&lt;')}</td><td>${e.kills}</td><td>${e.deaths}</td></tr>`).join('');
+  $('boardBody').innerHTML = rows.map(e => `<tr class="${e.isPlayer ? 'me' : ''}"><td><span class="swatch" style="background:#${e.color.toString(16).padStart(6, '0')}"></span>${esc(e.name)}</td><td>${e.kills}</td><td>${e.deaths}</td></tr>`).join('');
 }
 let hudT = 0;
 function updateHUD(dt) {

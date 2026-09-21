@@ -5,6 +5,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
 const PORT = +process.env.PORT || 3000;
@@ -13,15 +14,40 @@ const MAX_PLAYERS = 10;
 const PUBLIC = path.join(__dirname, 'public');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.ico': 'image/x-icon' };
 
+// ---------- защитные заголовки ----------
+// Страница может грузить только свои скрипты, шрифты Google и подключаться к нашим серверам.
+// Встроить игру в чужой сайт (для обмана игроков) нельзя, камера/микрофон/геолокация выключены.
+const SECURITY_HEADERS = {
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    "connect-src 'self' wss://ogurcy.onrender.com wss://ogurcy-us.onrender.com wss://ogurcy-asia.onrender.com ws://localhost:* ws://127.0.0.1:*",
+    "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
+  ].join('; '),
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Strict-Transport-Security': 'max-age=31536000',
+};
+function deny(res, code, text) { res.writeHead(code, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain; charset=utf-8' }); res.end(text || ''); }
+
 const server = http.createServer((req, res) => {
-  let p = decodeURIComponent(req.url.split('?')[0]);
+  if (req.method !== 'GET' && req.method !== 'HEAD') return deny(res, 405);       // сайт только отдаёт файлы
+  let p;
+  try { p = decodeURIComponent(req.url.split('?')[0]); } catch (e) { return deny(res, 400); }   // кривой адрес больше не роняет сервер
   if (p === '/') p = '/index.html';
+  if (p.includes('\0') || /(^|\/)\./.test(p)) return deny(res, 404);            // скрытые файлы (.git, .env) не отдаём
   const file = path.normalize(path.join(PUBLIC, p));
-  if (!file.startsWith(PUBLIC)) { res.writeHead(403); return res.end(); }
+  if (file !== PUBLIC && !file.startsWith(PUBLIC + path.sep)) return deny(res, 403); // только папка public, без соседних
   fs.readFile(file, (err, data) => {
-    if (err) { res.writeHead(404); return res.end('Не найдено'); }
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
-    res.end(data);
+    if (err) return deny(res, 404, 'Не найдено');
+    res.writeHead(200, { ...SECURITY_HEADERS, 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+    res.end(req.method === 'HEAD' ? undefined : data);
   });
 });
 
@@ -56,7 +82,8 @@ function makeCode() {
   do { c = Array.from({ length: 5 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join(''); } while (lobbies.has(c));
   return c;
 }
-const cleanName = n => String(n || '').replace(/[<>&"]/g, '').trim().slice(0, 16) || 'Огурчик';
+const INVISIBLE = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff]/g;
+const cleanName = n => String(n || '').replace(INVISIBLE, '').replace(/[<>&"'`]/g, '').trim().slice(0, 16) || 'Огурчик';
 function send(ws, o) { if (ws.readyState === 1) ws.send(JSON.stringify(o)); }
 function lobbyInfo(l) {
   return {
@@ -93,14 +120,42 @@ function leave(ws) {
   broadcastLobby(l);
 }
 
-const wss = new WebSocketServer({ server, path: '/ws' });
+// адрес игрока нужен только для лимитов — он не пишется в логи и никому не пересылается
+const clientIp = req => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '?';
+const ALLOWED_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1|\d{1,3}(\.\d{1,3}){3}|ogurcy(-us|-asia)?\.onrender\.com)(:\d+)?$/;
+const MAX_CONN_PER_IP = 20;          // компания друзей за одним роутером влезает
+const conns = new Map();             // ip -> число открытых соединений
+const adminTries = new Map();        // ip -> { n, until } — защита от подбора пароля админки
+const MAX_CUSTOM_PER_IP = 2;
+const wss = new WebSocketServer({
+  server, path: '/ws',
+  maxPayload: 64 * 1024,             // огромные сообщения отбрасываются сразу
+  verifyClient: ({ origin, req }) => {
+    if (origin && !ALLOWED_ORIGIN.test(origin)) return false;           // чужие сайты к серверу не подключатся
+    return (conns.get(clientIp(req)) || 0) < MAX_CONN_PER_IP;
+  },
+});
+// сравнение паролей за одинаковое время — по скорости ответа ничего не угадать
+function samePass(a, b) {
+  const x = crypto.createHash('sha256').update(String(a)).digest(), y = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(x, y);
+}
 wss.on('error', () => {}); // ошибки порта разбирает обработчик server.on('error') ниже
-wss.on('connection', ws => {
+wss.on('connection', (ws, req) => {
   ws.pid = 'p' + (nextId++);
   ws.isAlive = true;
+  ws.ip = clientIp(req);
+  conns.set(ws.ip, (conns.get(ws.ip) || 0) + 1);
+  // не больше ~200 сообщений в секунду: игре хватает с запасом, спам отсекается
+  ws.tokens = 400; ws.lastRefill = Date.now(); ws.strikes = 0;
   ws.on('pong', () => { ws.isAlive = true; });
   ws.on('message', raw => {
+    const nowMs = Date.now();
+    ws.tokens = Math.min(400, ws.tokens + (nowMs - ws.lastRefill) * .2); ws.lastRefill = nowMs;
+    if (ws.tokens < 1) { if (++ws.strikes > 200) ws.terminate(); return; }
+    ws.tokens -= 1;
     let m; try { m = JSON.parse(raw); } catch (e) { return; }
+    if (!m || typeof m !== 'object' || typeof m.t !== 'string') return;
     const l = ws.lobby;
     switch (m.t) {
       case 'create': {
@@ -108,11 +163,12 @@ wss.on('connection', ws => {
         if (m.public) {                                    // свой публичный сервер
           const custom = [...lobbies.values()].filter(x => x.custom).length;
           if (custom >= MAX_CUSTOM) return send(ws, { t: 'error', msg: 'Серверов уже слишком много — зайди в один из списка' });
+          if ([...lobbies.values()].filter(x => x.custom && x.ownerIp === ws.ip).length >= MAX_CUSTOM_PER_IP) return send(ws, { t: 'error', msg: 'С одного адреса можно держать не больше двух серверов' });
           const st = m.settings || {}, mode = MODES_OK.includes(st.mode) ? st.mode : 'ffa', first = MAPS_OK.includes(st.map) ? st.map : 'garden';
           const maps = [first, ...MAPS_OK.filter(x => x !== first)];
-          const name = String(m.srvName || '').replace(/[<>&"]/g, '').trim().slice(0, 24) || 'Сервер ' + cleanName(m.name);
+          const name = String(m.srvName || '').replace(INVISIBLE, '').replace(/[<>&"'`]/g, '').trim().slice(0, 24) || 'Сервер ' + cleanName(m.name);
           const code = makeCode();
-          const lobby = { code, name, public: true, custom: true, host: ws.pid, players: new Map(), inGame: false, curMap: first, settings: { mode, maps, diff: 1, fill: 6 } };
+          const lobby = { code, name, public: true, custom: true, ownerIp: ws.ip, host: ws.pid, players: new Map(), inGame: false, curMap: first, settings: { mode, maps, diff: 1, fill: 6 } };
           lobby.players.set(ws.pid, { id: ws.pid, name: cleanName(m.name), team: 0, ws });
           lobbies.set(code, lobby); ws.lobby = lobby;
           console.log(`Публичный сервер «${name}» (${code}) создан`);
@@ -128,7 +184,7 @@ wss.on('connection', ws => {
         break;
       }
       case 'join': {
-        const lobby = lobbies.get(String(m.code || '').toUpperCase().trim());
+        const lobby = lobbies.get(String(m.code || '').toUpperCase().trim().slice(0, 8));
         if (!lobby) return send(ws, { t: 'error', msg: 'Лобби с таким кодом не найдено' });
         if (lobby.players.size >= MAX_PLAYERS) return send(ws, { t: 'error', msg: `Лобби заполнено: уже ${MAX_PLAYERS} игроков` });
         leave(ws);
@@ -148,7 +204,14 @@ wss.on('connection', ws => {
       case 'list': send(ws, { t: 'list', rooms: roomList() }); break;
       case 'admin': {                                   // права админа: пароль знает только сервер
         if (!ADMIN_PASS) return send(ws, { t: 'adminfail', msg: 'На сервере не задан ADMIN_PASS — панель выключена' });
-        if (String(m.pass || '').trim() !== ADMIN_PASS) return send(ws, { t: 'adminfail', msg: 'Пароль не подошёл.' });
+        const tr = adminTries.get(ws.ip) || { n: 0, until: 0 };
+        if (tr.until > Date.now()) return send(ws, { t: 'adminfail', msg: 'Слишком много попыток — подожди 15 минут.' });
+        if (!samePass(String(m.pass || '').trim().slice(0, 200), ADMIN_PASS)) {
+          tr.n++; if (tr.n >= 5) { tr.n = 0; tr.until = Date.now() + 15 * 60 * 1000; }
+          adminTries.set(ws.ip, tr);
+          return send(ws, { t: 'adminfail', msg: 'Пароль не подошёл.' });
+        }
+        adminTries.delete(ws.ip);
         ws.admin = true; send(ws, { t: 'adminok' });
         console.log(`Игрок ${ws.pid} получил права админа`);
         break;
@@ -157,7 +220,8 @@ wss.on('connection', ws => {
       case 'settings': if (l && ws.pid === l.host && !l.public) { l.settings = m.settings || {}; broadcastLobby(l); } break;
       case 'state': if (l && ws.pid === l.host) { l.inGame = !!m.inGame; if (m.map) l.curMap = m.map; broadcastLobby(l); } break;
       case 'relay': {
-        if (!l) return;
+        if (!l || !m.d || typeof m.d !== 'object') return;
+        if (m.to !== undefined && m.to !== 'host' && !(typeof m.to === 'string' && /^p\d{1,9}$/.test(m.to))) return;
         const out = JSON.stringify({ t: 'msg', from: ws.pid, adm: ws.admin || undefined, d: m.d });
         const to = m.to === 'host' ? l.host : m.to;
         if (to) { const p = l.players.get(to); if (p && p.ws.readyState === 1) p.ws.send(out); }
@@ -166,10 +230,17 @@ wss.on('connection', ws => {
       }
     }
   });
-  ws.on('close', () => leave(ws));
+  ws.on('close', () => {
+    leave(ws);
+    const c = (conns.get(ws.ip) || 1) - 1; if (c > 0) conns.set(ws.ip, c); else conns.delete(ws.ip);
+  });
+  ws.on('error', () => {});
 });
 // отключаем «зависшие» соединения
 setInterval(() => { for (const ws of wss.clients) { if (!ws.isAlive) { ws.terminate(); continue; } ws.isAlive = false; ws.ping(); } }, 15000);
+
+process.on('uncaughtException', err => console.error('Ошибка (сервер продолжает работу):', err && err.message));
+process.on('unhandledRejection', err => console.error('Ошибка (сервер продолжает работу):', err && err.message));
 
 server.on('error', err => {
   if (err.code === 'EADDRINUSE') console.error(`
