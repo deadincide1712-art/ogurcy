@@ -309,7 +309,10 @@ function renderQuests() {
 }
 addEventListener('DOMContentLoaded', () => {
   const b = document.getElementById('openCase'); if (b) b.addEventListener('click', openCase);
-  const cl = document.getElementById('caseClose'); if (cl) cl.addEventListener('click', () => { if (!caseBusy) document.getElementById('caseModal').hidden = true; });
+  const cl = document.getElementById('caseClose'), modal = document.getElementById('caseModal');
+  const closeCase = () => { if (!caseBusy && modal) modal.hidden = true; };
+  if (cl) cl.addEventListener('click', closeCase);
+  addEventListener('keydown', e => { if (e.key === 'Escape' && modal && !modal.hidden) { e.stopPropagation(); closeCase(); } }, true);   // Esc закрывает окно кейса
   renderCases(); renderQuests();
   // скины из кейса видны и в обычных списках
   if (typeof renderGunSkins === 'function') renderGunSkins();

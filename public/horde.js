@@ -66,6 +66,8 @@ function hordeStartWave(n) {
   for (let i = 0; i < count && i < pool.length; i++) {
     const e = pool[i];
     spawn(e); e.hp = Math.round(100 * hpMul); e.dmgBoost = dmg; e.respawn = Infinity;
+    const sp = hordeSpawnPoint(); e.pos.copy(sp); e.vel.set(0, 0, 0);
+    if (NET.inGame && NET.isHost) relay({ k: 'spawn', id: e.id, x: r2(sp.x), y: r2(sp.y), z: r2(sp.z), yaw: r2(e.yaw) });
     if (bossWave && i === 0) {
       hordeMakeBoss(e);
       e.hp = e.hpMax = 1200 + 600 * (humans - 1) + n * 60;
@@ -156,6 +158,24 @@ function hordeAutoRespawn() {
   if (!player || player.alive || gameOver) return;
   spawn(player); hideCenter();
   const lo = document.getElementById('loadout'); if (lo) lo.hidden = true;
+}
+
+// захватчики выходят недалеко от игроков, но не прямо перед носом — иначе полкарты бегут пешком
+function hordeSpawnPoint() {
+  const humans = hordeHumans().filter(h => h.alive);
+  if (!humans.length) return spawnPoint();
+  for (let k = 0; k < 24; k++) {
+    const h = humans[Math.floor(Math.random() * humans.length)];
+    const a = Math.random() * Math.PI * 2, r = 34 + Math.random() * 18;
+    const p = new THREE.Vector3(h.pos.x + Math.cos(a) * r, 0, h.pos.z + Math.sin(a) * r);
+    if (Math.abs(p.x) > ARENA - 3 || Math.abs(p.z) > ARENA - 3) continue;   // за краем карты — ищем другое место
+    if (collidesAt(p)) continue;
+    if (hordeHumans().some(x => x.alive && x.pos.distanceTo(p) < 24)) continue;   // и не вплотную к игрокам
+    const to = new THREE.Vector3(p.x - h.pos.x, 0, p.z - h.pos.z).normalize();
+    if (k < 16 && to.dot(dirOf(h.yaw, 0, new THREE.Vector3())) > .35) continue;   // не появляться в поле зрения
+    return p;
+  }
+  return spawnPoint();
 }
 
 // ---------- ИИ захватчиков: идут прямо к ближайшему игроку ----------

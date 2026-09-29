@@ -158,6 +158,9 @@ function renderLobby() {
   $('lobbyCode').textContent = L.code;
   $('pcount').textContent = `${L.players.length} / ${L.max}`;
   const teamMode = !!(MODES[s.mode] && MODES[s.mode].teams && !MODES[s.mode].coop);
+  const coop = !!(MODES[s.mode] && MODES[s.mode].coop);
+  $('lBots').disabled = coop || !NET.isHost;
+  $('lBots').title = coop ? 'В «Нашествии» захватчиков присылает сам режим' : '';
   const ul = $('plist'); ul.textContent = '';
   for (const p of L.players) {
     const li = document.createElement('li');
@@ -416,7 +419,7 @@ function publicStart(next) {
 // хост ушёл, и хостом стали мы: берём на себя ботов, здоровье игроков и продолжение матчей
 function becomeHost() {
   for (const e of ents) {
-    if (e.kind === 'bot') { if (!e.alive) e.respawn = 1.5; e.ai.wp = null; e.ai.target = null; e.net = null; }
+    if (e.kind === 'bot') { if (!e.alive) e.respawn = mode === 'horde' ? Infinity : 1.5; e.ai.wp = null; e.ai.target = null; e.net = null; }
     if (e.kind === 'remote') e.hp = e.alive ? 100 : 0;
   }
   announce('Хост вышел — теперь матч ведёшь ты', '#eef4c4');
