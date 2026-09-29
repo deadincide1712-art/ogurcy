@@ -27,6 +27,7 @@ function charViewRefresh() {
   CV.scene.add(CV.model);
 }
 function charViewFrame(dt) {
+  if (!CV.ren) charViewInit();          // если событие загрузки прошло мимо — поднимаемся сами
   if (!CV.ren || !CV.model) return;
   const cv = CV.ren.domElement, w = cv.clientWidth, h = cv.clientHeight;
   if (!w || !h) return;                                   // канвас спрятан — не тратим кадры
@@ -43,4 +44,4 @@ function charViewMoveTo(id) {
   const cv = document.getElementById('charCanvas'), host = document.getElementById(id);
   if (cv && host && cv.parentElement !== host) host.append(cv);
 }
-addEventListener('DOMContentLoaded', () => { charViewInit(); });
+addEventListener('DOMContentLoaded', () => { try { charViewInit(); } catch (e) { console.error('превью огурца:', e); } });

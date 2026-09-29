@@ -552,6 +552,7 @@ function updatePlayer(dt) {
   const f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
   if (!locked && !paused) { if (keys.ArrowLeft) e.yaw += 2.4 * dt; if (keys.ArrowRight) e.yaw -= 2.4 * dt; }
   const wish = new THREE.Vector3(-Math.sin(e.yaw) * f + Math.cos(e.yaw) * s, 0, -Math.cos(e.yaw) * f - Math.sin(e.yaw) * s);
+  if (typeof touchWish === 'function') touchWish(wish);   // джойстик на телефоне
   if (wish.lengthSq()) wish.normalize();
   const speed = keys.ShiftLeft || scoped ? 3.2 : WEAPONS[e.weapon].melee ? 8 : 7; // с ножом бегаешь быстрее
   moveEnt(e, paused ? wish.set(0, 0, 0) : wish, speed, dt, !paused && keys.Space);
@@ -574,6 +575,7 @@ function frame(t) {
   gfxTick(dt, running && !gameOver && !paused);
   if (!$('menu').hidden && typeof charViewFrame === 'function') charViewFrame(dt);
   if (typeof adminTick === 'function' && running) adminTick(dt);
+  if (typeof touchTick === 'function') touchTick();
   if (running && !gameOver) {
     const sim = paused && !NET.inGame ? 0 : dt; // в сетевой игре мир не замирает на паузе
     now += sim;

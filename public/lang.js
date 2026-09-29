@@ -107,6 +107,8 @@ const DICT_EN = {
   'Права админа подтверждены сервером': 'Admin rights confirmed by the server',
   'Проверяем…': 'Checking…',
   'Кейсы': 'Cases',
+  'Управление с экрана': 'On-screen controls', 'Всегда': 'Always', 'Выключить': 'Off',
+  'Джойстик и кнопки для телефона. «Авто» — сами появляются на сенсорных устройствах.': 'Stick and buttons for phones. "Auto" shows them on touch devices.',
   'Нашествие': 'Invasion', 'Огурец-мутант': 'Mutant Cucumber', 'Огурец-мутант нарезан!': 'The Mutant Cucumber is sliced!',
   'Грядку захватили!': 'The garden has fallen!', 'Жди передышки между волнами': 'Wait for the break between waves',
   'волна': 'wave', 'отбито волн': 'waves held', 'за волну': 'for the wave', 'за босса': 'for the boss',
